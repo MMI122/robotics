@@ -1,0 +1,43 @@
+{
+  "name": "roboticsshop",
+  "version": "1.0.0",
+  "description": "Modern E-commerce Platform for Robotics Components",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:ml\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && php artisan serve",
+    "dev:ml": "cd ml-service && python app.py",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && composer install && cd ../ml-service && pip install -r requirements.txt",
+    "setup": "npm run install:all && npm run setup:backend && npm run setup:frontend",
+    "setup:backend": "cd backend && cp .env.example .env && php artisan key:generate && php artisan migrate --seed",
+    "setup:frontend": "cd frontend && cp .env.example .env.local",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && php artisan test"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "ecommerce",
+    "robotics",
+    "laravel",
+    "react",
+    "typescript",
+    "ml",
+    "modern-ui"
+  ],
+  "author": "RoboticsShop Team",
+  "license": "MIT"
+}
