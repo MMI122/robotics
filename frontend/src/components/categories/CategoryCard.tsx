@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { Category } from '../../types';
+import { getCategoryImageUrl } from '../../utils/imageUtils';
 
 interface CategoryCardProps {
   category: Category;
@@ -46,7 +47,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category }) => {
         <CardMedia
           component="img"
           height="100%"
-          image={category.image || '/images/placeholder-category.jpg'}
+          image={getCategoryImageUrl(category.image)}
           alt={category.name}
           className="category-image"
           sx={{

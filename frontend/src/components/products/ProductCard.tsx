@@ -28,6 +28,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { addToCart } from '../../store/slices/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../../store/slices/wishlistSlice';
 import { Product } from '../../types';
+import { getProductImageUrl } from '../../utils/imageUtils';
 
 interface ProductCardProps {
   product: Product;
@@ -182,7 +183,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <CardMedia
           component="img"
           height="240"
-          image={product.featured_image || '/images/placeholder-product.jpg'}
+          image={getProductImageUrl(product.featured_image)}
           alt={product.name}
           className="product-image"
           sx={{

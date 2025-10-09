@@ -62,9 +62,9 @@ const menuItems: MenuItem[] = [
     icon: <ProductsIcon />,
     children: [
       { title: 'All Products', icon: <ProductsIcon />, path: '/admin/products' },
-      { title: 'Add Product', icon: <ProductsIcon />, path: '/admin/products/create' },
+      { title: 'Add Product', icon: <ProductsIcon />, path: '/admin/products/new' },
       { title: 'Categories', icon: <CategoryIcon />, path: '/admin/categories' },
-      { title: 'Add Category', icon: <CategoryIcon />, path: '/admin/categories/create' },
+      { title: 'Add Category', icon: <CategoryIcon />, path: '/admin/categories/new' },
       { title: 'Inventory', icon: <StoreIcon />, path: '/admin/inventory' },
     ],
   },

@@ -35,6 +35,15 @@ const AdminLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
+  // Update sidebar state when screen size changes
+  React.useEffect(() => {
+    if (!isMobile) {
+      setSidebarOpen(true);
+    } else {
+      setSidebarOpen(false);
+    }
+  }, [isMobile]);
+
   const handleSidebarToggle = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -171,11 +180,18 @@ const AdminLayout: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          ml: sidebarOpen && !isMobile ? '280px' : 0,
+          ml: {
+            xs: 0,
+            md: sidebarOpen ? '280px' : 0,
+          },
           transition: theme.transitions.create(['margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
+          width: {
+            xs: '100%',
+            md: sidebarOpen ? 'calc(100% - 280px)' : '100%',
+          },
         }}
       >
         <Toolbar /> {/* Spacer for AppBar */}

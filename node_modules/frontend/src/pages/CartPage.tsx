@@ -19,6 +19,7 @@ import {
   alpha,
   Snackbar,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add,
@@ -34,102 +35,99 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
+import { fetchCart, updateCartItem, removeFromCart } from '../store/slices/cartSlice';
+import { addToWishlist } from '../store/slices/wishlistSlice';
+import { getProductImageUrl } from '../utils/imageUtils';
 
 const CartPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { items, total } = useAppSelector((state: any) => state.cart);
+  const { items: cartItems, loading, totalPrice, totalItems } = useAppSelector((state) => state.cart);
   
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'info' });
 
-  // Mock cart items for demonstration
-  const [cartItems] = useState([
-    {
-      id: 1,
-      name: 'Arduino Uno R3 Development Board',
-      price: 25.99,
-      originalPrice: 29.99,
-      quantity: 2,
-      image: '/api/placeholder/120/120',
-      inStock: true,
-      stockQuantity: 15,
-      brand: 'Arduino',
-      category: 'Microcontrollers',
-    },
-    {
-      id: 2,
-      name: 'ESP32 WiFi Bluetooth Development Board',
-      price: 12.50,
-      originalPrice: 15.99,
-      quantity: 1,
-      image: '/api/placeholder/120/120',
-      inStock: true,
-      stockQuantity: 8,
-      brand: 'Espressif',
-      category: 'Development Boards',
-    },
-    {
-      id: 3,
-      name: 'HC-SR04 Ultrasonic Distance Sensor',
-      price: 3.99,
-      originalPrice: 3.99,
-      quantity: 3,
-      image: '/api/placeholder/120/120',
-      inStock: true,
-      stockQuantity: 25,
-      brand: 'Generic',
-      category: 'Sensors',
-    },
-    {
-      id: 4,
-      name: 'SG90 Micro Servo Motor',
-      price: 4.99,
-      originalPrice: 6.99,
-      quantity: 2,
-      image: '/api/placeholder/120/120',
-      inStock: false,
-      stockQuantity: 0,
-      brand: 'TowerPro',
-      category: 'Motors',
-    },
-  ]);
+  useEffect(() => {
+    dispatch(fetchCart());
+  }, [dispatch]);
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const savings = cartItems.reduce((sum, item) => sum + ((item.originalPrice - item.price) * item.quantity), 0);
+  // Calculate totals
+  const subtotal = cartItems.reduce((sum, item) => {
+    const price = Number(item.product?.sale_price || item.product?.price || 0);
+    return sum + (price * item.quantity);
+  }, 0);
+  
+  const savings = cartItems.reduce((sum, item) => {
+    if (item.product?.sale_price && item.product?.price) {
+      const originalPrice = Number(item.product.price);
+      const salePrice = Number(item.product.sale_price);
+      return sum + ((originalPrice - salePrice) * item.quantity);
+    }
+    return sum;
+  }, 0);
+  
   const shipping = subtotal > 50 ? 0 : 8.99;
   const tax = subtotal * 0.08;
   const discount = appliedPromo ? subtotal * 0.1 : 0;
   const finalTotal = subtotal + shipping + tax - discount;
 
-  const handleQuantityChange = (itemId: number, newQuantity: number) => {
+  const handleQuantityChange = async (itemId: number, newQuantity: number) => {
     if (newQuantity < 1) return;
-    // Update quantity logic here
-    console.log(`Update item ${itemId} quantity to ${newQuantity}`);
+    try {
+      await dispatch(updateCartItem({ id: itemId, quantity: newQuantity })).unwrap();
+      setSnackbar({
+        open: true,
+        message: 'Cart updated successfully',
+        severity: 'success',
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to update cart',
+        severity: 'error',
+      });
+    }
   };
 
-  const handleRemoveItem = (itemId: number) => {
-    // Remove item logic here
-    console.log(`Remove item ${itemId}`);
-    setSnackbar({
-      open: true,
-      message: 'Item removed from cart',
-      severity: 'info',
-    });
+  const handleRemoveItem = async (itemId: number) => {
+    try {
+      await dispatch(removeFromCart(itemId)).unwrap();
+      setSnackbar({
+        open: true,
+        message: 'Item removed from cart',
+        severity: 'info',
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to remove item',
+        severity: 'error',
+      });
+    }
   };
 
-  const handleMoveToWishlist = (itemId: number) => {
-    // Move to wishlist logic here
-    console.log(`Move item ${itemId} to wishlist`);
-    setSnackbar({
-      open: true,
-      message: 'Item moved to wishlist',
-      severity: 'success',
-    });
+  const handleMoveToWishlist = async (itemId: number) => {
+    const cartItem = cartItems.find(item => item.id === itemId);
+    if (cartItem) {
+      try {
+        await dispatch(addToWishlist(cartItem.product_id)).unwrap();
+        await dispatch(removeFromCart(itemId)).unwrap();
+        setSnackbar({
+          open: true,
+          message: 'Item moved to wishlist',
+          severity: 'success',
+        });
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: 'Failed to move to wishlist',
+          severity: 'error',
+        });
+      }
+    }
   };
-
   const handleApplyPromo = () => {
     if (promoCode.toUpperCase() === 'SAVE10') {
       setAppliedPromo(promoCode);
@@ -149,6 +147,17 @@ const CartPage: React.FC = () => {
   };
 
   const steps = ['Shopping Cart', 'Checkout', 'Payment', 'Confirmation'];
+
+  if (loading) {
+    return (
+      <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
+        <CircularProgress size={60} />
+        <Typography variant="h6" sx={{ mt: 2 }}>
+          Loading cart...
+        </Typography>
+      </Container>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (
@@ -243,12 +252,12 @@ const CartPage: React.FC = () => {
                             overflow: 'hidden',
                             cursor: 'pointer',
                           }}
-                          onClick={() => navigate(`/product/${item.id}`)}
+                          onClick={() => navigate(`/products/${item.product?.slug}`)}
                         >
                           <Box
                             component="img"
-                            src={item.image}
-                            alt={item.name}
+                            src={getProductImageUrl(item.product?.featured_image)}
+                            alt={item.product?.name}
                             sx={{
                               width: '100%',
                               height: 120,
@@ -257,9 +266,9 @@ const CartPage: React.FC = () => {
                               '&:hover': { transform: 'scale(1.05)' },
                             }}
                           />
-                          {item.originalPrice > item.price && (
+                          {item.product?.sale_price && item.product?.price && item.product.sale_price < item.product.price && (
                             <Chip
-                              label={`-${Math.round(((item.originalPrice - item.price) / item.originalPrice) * 100)}%`}
+                              label={`-${Math.round(((item.product.price - item.product.sale_price) / item.product.price) * 100)}%`}
                               size="small"
                               sx={{
                                 position: 'absolute',
@@ -271,7 +280,7 @@ const CartPage: React.FC = () => {
                               }}
                             />
                           )}
-                          {!item.inStock && (
+                          {!item.product?.in_stock && (
                             <Box
                               sx={{
                                 position: 'absolute',
@@ -310,19 +319,19 @@ const CartPage: React.FC = () => {
                                 cursor: 'pointer',
                                 '&:hover': { color: theme.palette.primary.main },
                               }}
-                              onClick={() => navigate(`/product/${item.id}`)}
+                              onClick={() => navigate(`/products/${item.product?.slug}`)}
                             >
-                              {item.name}
+                              {item.product?.name}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                              <Chip label={item.brand} size="small" variant="outlined" />
-                              <Chip label={item.category} size="small" variant="outlined" />
+                              <Chip label={item.product?.category?.name || 'Electronics'} size="small" variant="outlined" />
+                              <Chip label={item.product?.sku} size="small" variant="outlined" />
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                               <Typography variant="h6" sx={{ fontWeight: 700, color: '#10b981' }}>
-                                ${item.price.toFixed(2)}
+                                ${Number(item.product?.sale_price || item.product?.price || 0).toFixed(2)}
                               </Typography>
-                              {item.originalPrice > item.price && (
+                              {item.product?.sale_price && item.product?.price && item.product.sale_price < item.product.price && (
                                 <Typography
                                   variant="body2"
                                   sx={{
@@ -330,13 +339,13 @@ const CartPage: React.FC = () => {
                                     color: 'text.secondary',
                                   }}
                                 >
-                                  ${item.originalPrice.toFixed(2)}
+                                  ${Number(item.product.price).toFixed(2)}
                                 </Typography>
                               )}
                             </Box>
-                            {item.inStock && (
+                            {item.product?.in_stock && (
                               <Typography variant="caption" color="text.secondary">
-                                {item.stockQuantity} in stock
+                                {item.product.stock_quantity} in stock
                               </Typography>
                             )}
                           </Grid>
@@ -348,7 +357,7 @@ const CartPage: React.FC = () => {
                                 <IconButton
                                   size="small"
                                   onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                                  disabled={!item.inStock || item.quantity <= 1}
+                                  disabled={!item.product?.in_stock || item.quantity <= 1}
                                   sx={{
                                     border: '1px solid',
                                     borderColor: 'divider',
@@ -375,7 +384,7 @@ const CartPage: React.FC = () => {
                                 <IconButton
                                   size="small"
                                   onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                                  disabled={!item.inStock || item.quantity >= item.stockQuantity}
+                                  disabled={!item.product?.in_stock || item.quantity >= (item.product?.stock_quantity || 0)}
                                   sx={{
                                     border: '1px solid',
                                     borderColor: 'divider',
@@ -414,7 +423,7 @@ const CartPage: React.FC = () => {
                             {/* Item Total */}
                             <Box sx={{ textAlign: 'right', mt: 2 }}>
                               <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                ${(item.price * item.quantity).toFixed(2)}
+                                ${(Number(item.product?.sale_price || item.product?.price || 0) * item.quantity).toFixed(2)}
                               </Typography>
                             </Box>
                           </Grid>
@@ -532,7 +541,7 @@ const CartPage: React.FC = () => {
                 >
                   <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center' }}>
                     <LocalShipping sx={{ mr: 1, color: '#0ea5e9' }} />
-                    Add ${(50 - subtotal).toFixed(2)} more for FREE shipping
+                    Add ${Number(50 - subtotal).toFixed(2)} more for FREE shipping
                   </Typography>
                 </Box>
               )}
@@ -543,7 +552,7 @@ const CartPage: React.FC = () => {
                 size="large"
                 endIcon={<ArrowForward />}
                 onClick={() => navigate('/checkout')}
-                disabled={cartItems.some(item => !item.inStock)}
+                disabled={cartItems.some(item => !item.product?.in_stock)}
                 sx={{
                   borderRadius: '12px',
                   py: 1.5,

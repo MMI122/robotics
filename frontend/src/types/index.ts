@@ -76,6 +76,12 @@ export interface CartItem {
   updated_at: string;
 }
 
+export interface CartResponse {
+  items: CartItem[];
+  total: number;
+  count: number;
+}
+
 export interface Order {
   id: number;
   order_number: string;

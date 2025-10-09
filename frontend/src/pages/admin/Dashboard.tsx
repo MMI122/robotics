@@ -30,7 +30,6 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/redux';
-import AdminSidebar from '../../components/dashboards/AdminSidebar';
 import {
   LineChart,
   Line,
@@ -175,50 +174,46 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f8fafc' }}>
-      <AdminSidebar open={false} onClose={() => {}} />
-      
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-        <Container maxWidth="xl">
-          {/* Header */}
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Box>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontWeight: 700,
-                    background: 'linear-gradient(45deg, #1e293b, #475569)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
-                >
-                  Admin Dashboard
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
-                  Welcome back, {user?.name || 'Admin'}! Here's your store overview
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<Download />}
-                  sx={{ borderRadius: '12px', textTransform: 'none' }}
-                >
-                  Export Report
-                </Button>
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  sx={{ borderRadius: '12px', textTransform: 'none' }}
-                  onClick={() => navigate('/admin/products/create')}
-                >
-                  Add Product
-                </Button>
-              </Box>
-            </Box>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                background: 'linear-gradient(45deg, #1e293b, #475569)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Admin Dashboard
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
+              Welcome back, {user?.name || 'Admin User'}! Here's your store overview
+            </Typography>
           </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<Download />}
+              sx={{ borderRadius: '12px', textTransform: 'none' }}
+            >
+              Export Report
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              sx={{ borderRadius: '12px', textTransform: 'none' }}
+              onClick={() => navigate('/admin/products/new')}
+            >
+              Add Product
+            </Button>
+          </Box>
+        </Box>
+      </Box>
 
           {/* Stats Cards */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -572,9 +567,7 @@ const AdminDashboard: React.FC = () => {
             </Grid>
           </Grid>
         </Container>
-      </Box>
-    </Box>
-  );
-};
+      );
+    };
 
 export default AdminDashboard;

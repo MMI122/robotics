@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { CartItem } from '../../types';
+import { CartItem, CartResponse } from '../../types';
 import { cartAPI } from '../../services/api';
 
 interface CartState {
@@ -107,14 +107,12 @@ const cartSlice = createSlice({
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.loading = false;
-        // Ensure payload is an array before using reduce
-        const items = Array.isArray(action.payload) ? action.payload : [];
+        // The API returns CartResponse: { items: CartItem[], total: number, count: number }
+        const cartData = action.payload as CartResponse;
+        const items = cartData.items || [];
         state.items = items;
-        state.totalItems = items.reduce((total, item) => total + item.quantity, 0);
-        state.totalPrice = items.reduce((total, item) => {
-          const price = item.product?.sale_price || item.product?.price || 0;
-          return total + (price * item.quantity);
-        }, 0);
+        state.totalItems = cartData.count || 0;
+        state.totalPrice = cartData.total || 0;
       })
       .addCase(fetchCart.rejected, (state, action) => {
         state.loading = false;
@@ -137,7 +135,7 @@ const cartSlice = createSlice({
         // Recalculate totals
         state.totalItems = state.items.reduce((total, item) => total + item.quantity, 0);
         state.totalPrice = state.items.reduce((total, item) => {
-          const price = item.product?.sale_price || item.product?.price || 0;
+          const price = Number(item.product?.sale_price || item.product?.price || 0);
           return total + (price * item.quantity);
         }, 0);
       })
@@ -155,7 +153,7 @@ const cartSlice = createSlice({
         // Recalculate totals
         state.totalItems = state.items.reduce((total, item) => total + item.quantity, 0);
         state.totalPrice = state.items.reduce((total, item) => {
-          const price = item.product?.sale_price || item.product?.price || 0;
+          const price = Number(item.product?.sale_price || item.product?.price || 0);
           return total + (price * item.quantity);
         }, 0);
       })
@@ -166,7 +164,7 @@ const cartSlice = createSlice({
         // Recalculate totals
         state.totalItems = state.items.reduce((total, item) => total + item.quantity, 0);
         state.totalPrice = state.items.reduce((total, item) => {
-          const price = item.product?.sale_price || item.product?.price || 0;
+          const price = Number(item.product?.sale_price || item.product?.price || 0);
           return total + (price * item.quantity);
         }, 0);
       })

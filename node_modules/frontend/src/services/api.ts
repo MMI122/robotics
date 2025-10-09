@@ -4,6 +4,7 @@ import {
   Product,
   Category,
   CartItem,
+  CartResponse,
   Order,
   Review,
   Wishlist,
@@ -145,7 +146,7 @@ export const categoriesAPI = {
 
 // Cart API
 export const cartAPI = {
-  getCart: (): Promise<AxiosResponse<ApiResponse<CartItem[]>>> =>
+  getCart: (): Promise<AxiosResponse<ApiResponse<CartResponse>>> =>
     api.get('/cart'),
   
   addToCart: (productId: number, quantity: number = 1): Promise<AxiosResponse<ApiResponse<CartItem>>> =>

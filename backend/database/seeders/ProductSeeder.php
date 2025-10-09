@@ -27,8 +27,8 @@ class ProductSeeder extends Seeder
                 'price' => 988.00,
                 'sale_price' => null,
                 'stock_quantity' => 50,
-                'featured_image' => 'https://picsum.photos/400/300?random=1',
-                'images' => json_encode(['https://picsum.photos/400/300?random=1']),
+                'featured_image' => 'images/products/arduino-uno-r3.jpg',
+                'images' => json_encode(['images/products/arduino-uno-r3.jpg']),
                 'category_id' => $categories['development-boards']->id,
                 'specifications' => json_encode([
                     'Microcontroller' => 'ATmega328P',
@@ -54,8 +54,8 @@ class ProductSeeder extends Seeder
                 'price' => 350.00,
                 'sale_price' => null,
                 'stock_quantity' => 75,
-                'featured_image' => 'https://picsum.photos/400/300?random=2',
-                'images' => json_encode(['https://picsum.photos/400/300?random=2']),
+                'featured_image' => 'images/products/arduinonano.jpg',
+                'images' => json_encode(['images/products/arduinonano.jpg']),
                 'category_id' => $categories['development-boards']->id,
                 'specifications' => json_encode([
                     'Microcontroller' => 'ATmega328P',
@@ -80,8 +80,8 @@ class ProductSeeder extends Seeder
                 'price' => 4600.00,
                 'sale_price' => 4000.00,
                 'stock_quantity' => 30,
-                'featured_image' => 'https://picsum.photos/400/300?random=3',
-                'images' => json_encode(['https://picsum.photos/400/300?random=3']),
+                'featured_image' => 'images/products/esp32-development-board.jpg',
+                'images' => json_encode(['images/products/esp32-development-board.jpg']),
                 'category_id' => $categories['internet-of-things-iot']->id,
                 'specifications' => json_encode([
                     'CPU' => 'Xtensa dual-core 32-bit LX6',
