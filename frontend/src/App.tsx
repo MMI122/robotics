@@ -64,6 +64,7 @@ import FAQPage from './pages/FAQPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import NotFoundPage from './pages/NotFoundPage';
+import SimpleCheckoutPage from './pages/SimpleCheckoutPage';
 
 // Redux Actions
 import { getCurrentUser } from './store/slices/authSlice';
@@ -183,6 +184,9 @@ const AppContent: React.FC = () => {
               <Route path="faq" element={<FAQPage />} />
               <Route path="terms" element={<TermsPage />} />
               <Route path="privacy" element={<PrivacyPage />} />
+              <Route path="paypal-demo" element={<SimpleCheckoutPage />} />
+              <Route path="orders" element={<CustomerOrders />} />
+              <Route path="orders/:id" element={<CustomerOrderDetail />} />
             </Route>
 
             {/* Auth Routes */}

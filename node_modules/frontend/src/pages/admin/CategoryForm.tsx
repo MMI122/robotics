@@ -57,22 +57,6 @@ import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
-import AdminSidebar from '../../components/dashboards/AdminSidebar';
-
-const AdminContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  minHeight: '100vh',
-  backgroundColor: theme.palette.grey[50],
-}));
-
-const MainContent = styled(Box)(({ theme }) => ({
-  flexGrow: 1,
-  padding: theme.spacing(3),
-  marginLeft: 280,
-  [theme.breakpoints.down('md')]: {
-    marginLeft: 0,
-  },
-}));
 
 const UploadBox = styled(Box)(({ theme }) => ({
   border: `2px dashed ${theme.palette.primary.main}`,
@@ -164,7 +148,6 @@ const AdminCategoryForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -243,15 +226,11 @@ const AdminCategoryForm: React.FC = () => {
   ];
 
   return (
-    <AdminContainer>
-      <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
-      <MainContent>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
           {/* Header */}
           <Box sx={{ mb: 4 }}>
             <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 2 }}>
@@ -726,8 +705,6 @@ const AdminCategoryForm: React.FC = () => {
             )}
           </Formik>
         </motion.div>
-      </MainContent>
-    </AdminContainer>
   );
 };
 

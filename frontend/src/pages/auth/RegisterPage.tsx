@@ -35,6 +35,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/redux';
+import { register } from '../../store/slices/authSlice';
+import { toast } from 'react-toastify';
 
 const RegisterPage: React.FC = () => {
   const theme = useTheme();
@@ -95,14 +97,20 @@ const RegisterPage: React.FC = () => {
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const registerData = {
+        name: `${formData.firstName} ${formData.lastName}`,
+        email: formData.email,
+        password: formData.password,
+        password_confirmation: formData.confirmPassword,
+        phone: formData.phone,
+      };
+
+      await dispatch(register(registerData)).unwrap();
       
-      // Mock successful registration
-      console.log('Registration attempt:', formData);
-      navigate('/auth/login?registered=true');
-    } catch (err) {
-      setError('Registration failed. Please try again.');
+      toast.success('Registration successful! Welcome to RoboticsShop!');
+      navigate('/login');
+    } catch (err: any) {
+      setError(err || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -519,7 +527,7 @@ const RegisterPage: React.FC = () => {
                         component="button"
                         type="button"
                         variant="body2"
-                        onClick={() => navigate('/auth/login')}
+                        onClick={() => navigate('/login')}
                         sx={{
                           textDecoration: 'none',
                           color: theme.palette.primary.main,

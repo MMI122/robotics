@@ -335,4 +335,157 @@ class OrderController extends Controller
             'message' => 'Order statistics retrieved successfully'
         ]);
     }
+
+    /**
+     * Display all orders for admin
+     */
+    public function adminIndex(Request $request)
+    {
+        try {
+            $perPage = $request->get('per_page', 10);
+            $status = $request->get('status');
+
+            $query = Order::with(['user', 'orderItems.product'])
+                ->orderBy('created_at', 'desc');
+
+            if ($status) {
+                $query->where('status', $status);
+            }
+
+            $orders = $query->paginate($perPage);
+
+            // Transform the data to match frontend expectations
+            $transformedOrders = $orders->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'user_id' => $order->user_id,
+                    'user_name' => $order->user->name ?? 'Unknown',
+                    'user_email' => $order->user->email ?? 'unknown@email.com',
+                    'status' => $this->transformStatus($order->status),
+                    'total_amount' => (float) $order->total_amount,
+                    'payment_method' => $this->transformPaymentMethod($order->payment_method),
+                    'payment_status' => $this->transformPaymentStatus($order->payment_status),
+                    'shipping_address' => $this->formatShippingAddress($order->shipping_address),
+                    'created_at' => $order->created_at,
+                    'updated_at' => $order->updated_at,
+                    'items' => $order->orderItems->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'product_id' => $item->product_id,
+                            'product_name' => $item->product->name ?? 'Unknown Product',
+                            'product_image' => $item->product->image_url ?? '/api/placeholder/60/60',
+                            'quantity' => $item->quantity,
+                            'price' => (float) $item->price,
+                        ];
+                    })
+                ];
+            });
+
+            // Update pagination data
+            $paginationData = $orders->toArray();
+            $paginationData['data'] = $transformedOrders;
+
+            return response()->json([
+                'success' => true,
+                'data' => $paginationData,
+                'message' => 'Orders retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching orders',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update order status (Admin only)
+     */
+    public function updateStatus(Request $request, Order $order)
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:pending,processing,shipped,delivered,cancelled'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $order->update([
+            'status' => $request->status
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $order->load(['user', 'orderItems.product']),
+            'message' => 'Order status updated successfully'
+        ]);
+    }
+
+    /**
+     * Transform status from database to frontend format
+     */
+    private function transformStatus($status)
+    {
+        // Return status as-is since frontend expects the actual database values
+        return $status;
+    }
+
+    /**
+     * Transform payment method from database to frontend format
+     */
+    private function transformPaymentMethod($paymentMethod)
+    {
+        $methodMap = [
+            'cod' => 'bank_transfer',
+            'stripe' => 'credit_card',
+            'paypal' => 'paypal'
+        ];
+
+        return $methodMap[$paymentMethod] ?? $paymentMethod;
+    }
+
+    /**
+     * Transform payment status from database to frontend format
+     */
+    private function transformPaymentStatus($paymentStatus)
+    {
+        $statusMap = [
+            'paid' => 'completed',
+            'pending' => 'pending',
+            'failed' => 'failed'
+        ];
+
+        return $statusMap[$paymentStatus] ?? $paymentStatus;
+    }
+
+    /**
+     * Format shipping address from object to string
+     */
+    private function formatShippingAddress($shippingAddress)
+    {
+        if (is_string($shippingAddress)) {
+            return $shippingAddress;
+        }
+
+        if (is_array($shippingAddress) || is_object($shippingAddress)) {
+            $address = (array) $shippingAddress;
+            $parts = [];
+            
+            if (!empty($address['address'])) $parts[] = $address['address'];
+            if (!empty($address['city'])) $parts[] = $address['city'];
+            if (!empty($address['state'])) $parts[] = $address['state'];
+            if (!empty($address['country'])) $parts[] = $address['country'];
+            if (!empty($address['postal_code'])) $parts[] = $address['postal_code'];
+            
+            return implode(', ', $parts);
+        }
+
+        return 'N/A';
+    }
 }

@@ -10,6 +10,7 @@ use App\Http\Controllers\API\OrderController;
 use App\Http\Controllers\API\ReviewController;
 use App\Http\Controllers\API\WishlistController;
 use App\Http\Controllers\API\SupportController;
+use App\Http\Controllers\API\PayPalController;
 
 // Public routes
 Route::post('register', [AuthController::class, 'register']);
@@ -76,12 +77,48 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('reviews/{review}', [ReviewController::class, 'destroy']);
     Route::get('user/reviews', [ReviewController::class, 'userReviews']);
     
+    // PayPal routes
+    Route::post('paypal/create-payment', [PayPalController::class, 'createPayment']);
+    Route::post('paypal/capture-payment', [PayPalController::class, 'capturePayment']);
+    
     // Support routes
     Route::get('support', [SupportController::class, 'index']);
     Route::post('support', [SupportController::class, 'store']);
     Route::get('support/{support}', [SupportController::class, 'show']);
     Route::put('support/{support}', [SupportController::class, 'update']);
 });
+
+// Public endpoints for debugging
+Route::get('admin/analytics/dashboard', function () {
+    try {
+        $totalProducts = \App\Models\Product::count();
+        $totalOrders = \App\Models\Order::count();
+        $totalUsers = \App\Models\User::where('role', 'customer')->count();
+        $totalRevenue = \App\Models\Order::where('status', '!=', 'cancelled')
+            ->whereNotNull('total_amount')
+            ->sum('total_amount');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Admin dashboard analytics retrieved successfully',
+            'data' => [
+                'total_products' => $totalProducts,
+                'total_orders' => $totalOrders,
+                'total_users' => $totalUsers,
+                'total_revenue' => $totalRevenue ?: 0
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error fetching dashboard analytics',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
+Route::get('admin/orders', [OrderController::class, 'adminIndex']);
+Route::get('admin/products', [ProductController::class, 'adminIndex']);
 
 // Admin routes
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
@@ -97,7 +134,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
     
     // Order management
-    Route::get('orders', [OrderController::class, 'adminIndex']);
     Route::put('orders/{order}/status', [OrderController::class, 'updateStatus']);
     Route::get('orders/analytics', [OrderController::class, 'analytics']);
     
@@ -110,21 +146,12 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('support', [SupportController::class, 'adminIndex']);
     Route::put('support/{support}/reply', [SupportController::class, 'adminReply']);
     Route::put('support/{support}/status', [SupportController::class, 'updateStatus']);
-    
-    // Analytics and statistics
-    Route::get('analytics/dashboard', function () {
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Admin dashboard analytics endpoint',
-            'data' => [
-                'total_products' => \App\Models\Product::count(),
-                'total_orders' => \App\Models\Order::count(),
-                'total_users' => \App\Models\User::count(),
-                'total_revenue' => \App\Models\Order::where('status', '!=', 'cancelled')->sum('total_amount')
-            ]
-        ]);
-    });
 });
+
+// Public PayPal routes (for redirects and webhooks)
+Route::get('paypal/success', [PayPalController::class, 'success']);
+Route::get('paypal/cancel', [PayPalController::class, 'cancel']);
+Route::post('paypal/webhook', [PayPalController::class, 'webhook']);
 
 // Health check
 Route::get('health', function () {

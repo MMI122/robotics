@@ -94,6 +94,9 @@ export const productsAPI = {
     api.get('/products/search', { params: { q: query } }),
   
   // Admin only
+  getAdminProducts: (filters?: ProductFilter): Promise<AxiosResponse<ApiResponse<PaginatedResponse<Product>>>> =>
+    api.get('/products', { params: filters }), // Temporarily use public endpoint until auth is set up
+  
   createProduct: (data: FormData): Promise<AxiosResponse<ApiResponse<Product>>> =>
     api.post('/admin/products', data, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -229,17 +232,32 @@ export const supportAPI = {
 
 // Analytics API (Admin only)
 export const analyticsAPI = {
-  getDashboardStats: (): Promise<AxiosResponse<ApiResponse<DashboardStats>>> =>
+  getDashboardStats: (): Promise<AxiosResponse<ApiResponse<{
+    total_products: number;
+    total_orders: number;
+    total_users: number;
+    total_revenue: number;
+  }>>> =>
     api.get('/admin/analytics/dashboard'),
+};
+
+// PayPal API
+export const paypalAPI = {
+  createPayment: (orderId: number): Promise<AxiosResponse<ApiResponse<{
+    paypal_order_id: string;
+    approval_url: string;
+  }>>> =>
+    api.post('/paypal/create-payment', { order_id: orderId }),
   
-  getSalesAnalytics: (period?: string): Promise<AxiosResponse<ApiResponse<any>>> =>
-    api.get('/admin/analytics/sales', { params: { period } }),
-  
-  getProductAnalytics: (): Promise<AxiosResponse<ApiResponse<any>>> =>
-    api.get('/admin/analytics/products'),
-  
-  getCustomerAnalytics: (): Promise<AxiosResponse<ApiResponse<any>>> =>
-    api.get('/admin/analytics/customers'),
+  capturePayment: (data: {
+    paypal_order_id: string;
+    order_id: number;
+  }): Promise<AxiosResponse<ApiResponse<{
+    capture_id: string;
+    status: string;
+    order: Order;
+  }>>> =>
+    api.post('/paypal/capture-payment', data),
 };
 
 export default api;

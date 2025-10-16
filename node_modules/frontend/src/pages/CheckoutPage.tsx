@@ -23,6 +23,8 @@ import {
   alpha,
   Collapse,
 } from '@mui/material';
+import { PayPalScriptProvider } from '@paypal/react-paypal-js';
+import { PayPalPayment } from '../components';
 import {
   ShoppingCart,
   LocalShipping,
@@ -156,7 +158,14 @@ const CheckoutPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', py: 4 }}>
+    <PayPalScriptProvider 
+      options={{ 
+        clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || "AfIRJm_4l0QFrJRdTcZ9B3Eid4AV1_z5F7P_7TE3HjUXUQCNJ4zF8Ot_KH_BbV3f5SThKgUuBF0U1X9M",
+        currency: "USD",
+        components: "buttons"
+      }}
+    >
+      <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="xl">
         {/* Progress Stepper */}
         <Card sx={{ mb: 4, borderRadius: '16px' }}>
@@ -581,6 +590,20 @@ const CheckoutPage: React.FC = () => {
                               </Box>
                             }
                           />
+                          <Collapse in={paymentMethod === 'paypal'}>
+                            <Box sx={{ mt: 3, pl: 4 }}>
+                              <PayPalPayment
+                                amount={cartItems.reduce((total, item) => total + item.price * item.quantity, 0)}
+                                onSuccess={(details: any) => {
+                                  console.log('PayPal payment successful:', details);
+                                  handleNext(); // Proceed to confirmation step
+                                }}
+                                onError={(error: any) => {
+                                  console.error('PayPal payment error:', error);
+                                }}
+                              />
+                            </Box>
+                          </Collapse>
                         </CardContent>
                       </Card>
 
@@ -877,7 +900,8 @@ const CheckoutPage: React.FC = () => {
           </Grid>
         </Grid>
       </Container>
-    </Box>
+      </Box>
+    </PayPalScriptProvider>
   );
 };
 

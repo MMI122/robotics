@@ -53,22 +53,6 @@ import {
 import { styled } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
-import AdminSidebar from '../../components/dashboards/AdminSidebar';
-
-const AdminContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  minHeight: '100vh',
-  backgroundColor: theme.palette.grey[50],
-}));
-
-const MainContent = styled(Box)(({ theme }) => ({
-  flexGrow: 1,
-  padding: theme.spacing(3),
-  marginLeft: 280,
-  [theme.breakpoints.down('md')]: {
-    marginLeft: 0,
-  },
-}));
 
 const StatsCard = styled(Card)(({ theme }) => ({
   background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
@@ -133,7 +117,6 @@ function TabPanel(props: TabPanelProps) {
 const AdminAnalytics: React.FC = () => {
   const theme = useTheme();
   
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dateRange, setDateRange] = useState('30');
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -234,27 +217,18 @@ const AdminAnalytics: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminContainer>
-        <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <MainContent>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-            <Typography variant="h6">Loading analytics...</Typography>
-          </Box>
-        </MainContent>
-      </AdminContainer>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <Typography variant="h6">Loading analytics...</Typography>
+      </Box>
     );
   }
 
   return (
-    <AdminContainer>
-      <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
-      <MainContent>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
           {/* Header */}
           <Box sx={{ mb: 4 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -596,8 +570,6 @@ const AdminAnalytics: React.FC = () => {
             </Grid>
           </TabPanel>
         </motion.div>
-      </MainContent>
-    </AdminContainer>
   );
 };
 

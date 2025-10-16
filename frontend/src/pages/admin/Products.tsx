@@ -50,27 +50,14 @@ import {
   Category as CategoryIcon,
   Inventory as StockIcon,
   TrendingUp as SalesIcon,
-  AttachMoney as PriceIcon
+  AttachMoney as PriceIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import AdminSidebar from '../../components/dashboards/AdminSidebar';
-
-const AdminContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  minHeight: '100vh',
-  backgroundColor: theme.palette.grey[50],
-}));
-
-const MainContent = styled(Box)(({ theme }) => ({
-  flexGrow: 1,
-  padding: theme.spacing(3),
-  marginLeft: 280, // Sidebar width
-  [theme.breakpoints.down('md')]: {
-    marginLeft: 0,
-  },
-}));
+import { productsAPI } from '../../services/api';
+import { Product } from '../../types';
 
 const StatsCard = styled(Card)(({ theme }) => ({
   background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
@@ -93,23 +80,6 @@ const SearchToolbar = styled(Toolbar)(({ theme }) => ({
   minHeight: '64px !important',
 }));
 
-interface Product {
-  id: number;
-  name: string;
-  slug: string;
-  sku: string;
-  price: number;
-  salePrice?: number;
-  stock: number;
-  category: string;
-  image: string;
-  status: 'active' | 'inactive' | 'draft';
-  featured: boolean;
-  sales: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface Filters {
   category: string;
   status: string;
@@ -121,7 +91,6 @@ const AdminProducts: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,93 +109,25 @@ const AdminProducts: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
 
-  // Mock data
-  useEffect(() => {
-    const mockProducts: Product[] = [
-      {
-        id: 1,
-        name: 'Arduino Uno R3 Microcontroller Board',
-        slug: 'arduino-uno-r3',
-        sku: 'ARD-001',
-        price: 29.99,
-        salePrice: 24.99,
-        stock: 150,
-        category: 'Microcontrollers',
-        image: '/api/placeholder/80/80',
-        status: 'active',
-        featured: true,
-        sales: 342,
-        createdAt: '2024-01-15',
-        updatedAt: '2024-01-20'
-      },
-      {
-        id: 2,
-        name: 'Raspberry Pi 4 Model B 8GB',
-        slug: 'raspberry-pi-4-8gb',
-        sku: 'RPI-004',
-        price: 89.99,
-        stock: 75,
-        category: 'Microcontrollers',
-        image: '/api/placeholder/80/80',
-        status: 'active',
-        featured: true,
-        sales: 156,
-        createdAt: '2024-01-10',
-        updatedAt: '2024-01-18'
-      },
-      {
-        id: 3,
-        name: 'Advanced Robot Arm Kit',
-        slug: 'advanced-robot-arm-kit',
-        sku: 'RBT-003',
-        price: 299.99,
-        salePrice: 249.99,
-        stock: 0,
-        category: 'Robot Kits',
-        image: '/api/placeholder/80/80',
-        status: 'inactive',
-        featured: false,
-        sales: 89,
-        createdAt: '2024-01-05',
-        updatedAt: '2024-01-15'
-      },
-      {
-        id: 4,
-        name: 'Ultrasonic Distance Sensor HC-SR04',
-        slug: 'ultrasonic-sensor-hc-sr04',
-        sku: 'SNS-001',
-        price: 8.99,
-        stock: 500,
-        category: 'Sensors',
-        image: '/api/placeholder/80/80',
-        status: 'active',
-        featured: false,
-        sales: 1234,
-        createdAt: '2024-01-01',
-        updatedAt: '2024-01-12'
-      },
-      {
-        id: 5,
-        name: 'ESP32 Development Board',
-        slug: 'esp32-development-board',
-        sku: 'ESP-001',
-        price: 15.99,
-        stock: 25,
-        category: 'Microcontrollers',
-        image: '/api/placeholder/80/80',
-        status: 'draft',
-        featured: false,
-        sales: 67,
-        createdAt: '2024-01-18',
-        updatedAt: '2024-01-19'
-      }
-    ];
-
-    setTimeout(() => {
-      setProducts(mockProducts);
-      setFilteredProducts(mockProducts);
+  // Fetch products from API
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await productsAPI.getAdminProducts();
+      const productsData = response?.data?.data?.data || []; // Handle pagination response with safe navigation
+      setProducts(productsData);
+      setFilteredProducts(productsData);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts([]);
+      setFilteredProducts([]);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
   }, []);
 
   // Filter and search products
@@ -235,16 +136,16 @@ const AdminProducts: React.FC = () => {
       const matchesSearch = searchQuery === '' || 
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchQuery.toLowerCase());
+        (product.category?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesCategory = filters.category === '' || product.category === filters.category;
-      const matchesStatus = filters.status === '' || product.status === filters.status;
-      const matchesFeatured = filters.featured === null || product.featured === filters.featured;
+      const matchesCategory = filters.category === '' || (product.category?.name || '') === filters.category;
+      const matchesStatus = filters.status === '' || (product.is_active ? 'active' : 'inactive') === filters.status;
+      const matchesFeatured = filters.featured === null || product.is_featured === filters.featured;
       
       let matchesStock = true;
-      if (filters.stock === 'in-stock') matchesStock = product.stock > 0;
-      if (filters.stock === 'out-of-stock') matchesStock = product.stock === 0;
-      if (filters.stock === 'low-stock') matchesStock = product.stock > 0 && product.stock <= 50;
+      if (filters.stock === 'in-stock') matchesStock = (product.stock_quantity || 0) > 0;
+      if (filters.stock === 'out-of-stock') matchesStock = (product.stock_quantity || 0) === 0;
+      if (filters.stock === 'low-stock') matchesStock = (product.stock_quantity || 0) > 0 && (product.stock_quantity || 0) <= 50;
 
       return matchesSearch && matchesCategory && matchesStatus && matchesFeatured && matchesStock;
     });
@@ -262,25 +163,25 @@ const AdminProducts: React.FC = () => {
     },
     {
       title: 'Active Products',
-      value: products.filter(p => p.status === 'active').length,
+      value: products.filter(p => p.is_active).length,
       icon: <ViewIcon fontSize="large" />,
       color: 'success' as const
     },
     {
       title: 'Out of Stock',
-      value: products.filter(p => p.stock === 0).length,
+      value: products.filter(p => (p.stock_quantity || 0) === 0).length,
       icon: <StockIcon fontSize="large" />,
       color: 'warning' as const
     },
     {
-      title: 'Total Sales',
-      value: products.reduce((sum, p) => sum + p.sales, 0),
+      title: 'Featured Products',
+      value: products.filter(p => p.is_featured).length,
       icon: <SalesIcon fontSize="large" />,
       color: 'secondary' as const
     }
   ];
 
-  const categories = Array.from(new Set(products.map(p => p.category)));
+  const categories = Array.from(new Set(products.map(p => p.category?.name || 'No Category')));
 
   const handleSelectProduct = (productId: number) => {
     setSelectedProducts(prev => 
@@ -336,7 +237,7 @@ const AdminProducts: React.FC = () => {
   const handleToggleFeatured = (productId: number) => {
     setProducts(prev => prev.map(product => 
       product.id === productId 
-        ? { ...product, featured: !product.featured }
+        ? { ...product, is_featured: !product.is_featured }
         : product
     ));
   };
@@ -356,27 +257,18 @@ const AdminProducts: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminContainer>
-        <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <MainContent>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-            <Typography variant="h6">Loading products...</Typography>
-          </Box>
-        </MainContent>
-      </AdminContainer>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <Typography variant="h6">Loading products...</Typography>
+      </Box>
     );
   }
 
   return (
-    <AdminContainer>
-      <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
-      <MainContent>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
           {/* Header */}
           <Box sx={{ mb: 4 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -384,6 +276,14 @@ const AdminProducts: React.FC = () => {
                 Products Management
               </Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={fetchProducts}
+                  disabled={loading}
+                >
+                  Refresh
+                </Button>
                 <Button
                   variant="outlined"
                   startIcon={<ImportIcon />}
@@ -401,7 +301,7 @@ const AdminProducts: React.FC = () => {
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
-                  onClick={() => navigate('/admin/products/add')}
+                  onClick={() => navigate('/admin/products/new')}
                 >
                   Add Product
                 </Button>
@@ -567,7 +467,7 @@ const AdminProducts: React.FC = () => {
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Avatar
-                              src={product.image}
+                              src={product.featured_image || '/api/placeholder/50/50'}
                               alt={product.name}
                               variant="rounded"
                               sx={{ width: 50, height: 50 }}
@@ -588,44 +488,45 @@ const AdminProducts: React.FC = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip label={product.category} size="small" variant="outlined" />
+                          <Chip label={product.category?.name || 'No Category'} size="small" variant="outlined" />
                         </TableCell>
                         <TableCell>
                           <Box>
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               ${product.price}
                             </Typography>
-                            {product.salePrice && (
+                            {product.sale_price && (
                               <Typography variant="caption" color="error.main">
-                                Sale: ${product.salePrice}
+                                Sale: ${product.sale_price}
                               </Typography>
                             )}
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={product.stock}
+                            label={product.stock_quantity || 0}
                             size="small"
-                            color={product.stock === 0 ? 'error' : product.stock <= 50 ? 'warning' : 'success'}
+                            color={(product.stock_quantity || 0) === 0 ? 'error' : (product.stock_quantity || 0) <= 50 ? 'warning' : 'success'}
                           />
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {product.sales.toLocaleString()}
+                            {/* Note: sales data might not be available in current Product type */}
+                            0
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={product.status}
+                            label={product.is_active ? 'active' : 'inactive'}
                             size="small"
-                            color={getStatusColor(product.status)}
+                            color={getStatusColor(product.is_active ? 'active' : 'inactive')}
                             onClick={() => handleToggleStatus(product.id)}
                             sx={{ cursor: 'pointer' }}
                           />
                         </TableCell>
                         <TableCell>
                           <Checkbox
-                            checked={product.featured}
+                            checked={product.is_featured}
                             onChange={() => handleToggleFeatured(product.id)}
                             size="small"
                           />
@@ -722,13 +623,11 @@ const AdminProducts: React.FC = () => {
           <Fab
             color="primary"
             sx={{ position: 'fixed', bottom: 24, right: 24 }}
-            onClick={() => navigate('/admin/products/add')}
+            onClick={() => navigate('/admin/products/new')}
           >
             <AddIcon />
           </Fab>
         </motion.div>
-      </MainContent>
-    </AdminContainer>
   );
 };
 

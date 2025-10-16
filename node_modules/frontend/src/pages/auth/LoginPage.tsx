@@ -433,7 +433,7 @@ const LoginPage: React.FC = () => {
                         component="button"
                         type="button"
                         variant="body2"
-                        onClick={() => navigate('/auth/register')}
+                        onClick={() => navigate('/register')}
                         sx={{
                           textDecoration: 'none',
                           color: theme.palette.primary.main,

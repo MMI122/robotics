@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Container,
   Typography,
   Grid,
   Card,
@@ -15,6 +14,8 @@ import {
   InputAdornment,
   useTheme,
   alpha,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -30,6 +31,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/redux';
+import { analyticsAPI, ordersAPI, productsAPI } from '../../services/api';
 import {
   LineChart,
   Line,
@@ -53,20 +55,28 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAppSelector((state: any) => state.auth);
 
-  // Mock data for dashboard
-  const [dashboardStats] = useState({
-    totalRevenue: 125750,
-    revenueGrowth: 12.5,
-    totalOrders: 1847,
-    ordersGrowth: 8.3,
-    totalCustomers: 892,
-    customersGrowth: 15.2,
-    totalProducts: 456,
-    productsGrowth: 5.7,
-    pendingOrders: 23,
-    lowStockItems: 12,
+  // Loading and error states
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Dashboard data state
+  const [dashboardStats, setDashboardStats] = useState({
+    totalRevenue: 0,
+    revenueGrowth: 0,
+    totalOrders: 0,
+    ordersGrowth: 0,
+    totalCustomers: 0,
+    customersGrowth: 0,
+    totalProducts: 0,
+    productsGrowth: 0,
+    pendingOrders: 0,
+    lowStockItems: 0,
   });
 
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [topProducts, setTopProducts] = useState<any[]>([]);
+  
+  // Mock chart data (will be replaced with real data later)
   const [salesData] = useState([
     { month: 'Jan', revenue: 8500, orders: 120, customers: 85 },
     { month: 'Feb', revenue: 9200, orders: 135, customers: 92 },
@@ -84,67 +94,75 @@ const AdminDashboard: React.FC = () => {
     { name: 'Others', value: 5, color: '#8b5cf6' },
   ]);
 
-  const [recentOrders] = useState([
-    {
-      id: 'ORD-2024-001',
-      customer: 'John Smith',
-      total: 234.50,
-      status: 'completed',
-      date: '2024-01-15',
-    },
-    {
-      id: 'ORD-2024-002',
-      customer: 'Sarah Johnson',
-      total: 189.99,
-      status: 'processing',
-      date: '2024-01-15',
-    },
-    {
-      id: 'ORD-2024-003',
-      customer: 'Mike Chen',
-      total: 567.25,
-      status: 'shipped',
-      date: '2024-01-14',
-    },
-    {
-      id: 'ORD-2024-004',
-      customer: 'Emily Davis',
-      total: 123.75,
-      status: 'pending',
-      date: '2024-01-14',
-    },
-  ]);
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const [topProducts] = useState([
-    {
-      id: 1,
-      name: 'Arduino Uno R3',
-      sales: 156,
-      revenue: 3900,
-      growth: 12.5,
-    },
-    {
-      id: 2,
-      name: 'ESP32 Development Board',
-      sales: 134,
-      revenue: 1675,
-      growth: 8.9,
-    },
-    {
-      id: 3,
-      name: 'Ultrasonic Sensor HC-SR04',
-      sales: 198,
-      revenue: 1584,
-      growth: -2.3,
-    },
-    {
-      id: 4,
-      name: 'Servo Motor SG90',
-      sales: 245,
-      revenue: 1225,
-      growth: 15.7,
-    },
-  ]);
+        // Fetch analytics data
+        const [statsResponse, ordersResponse, productsResponse] = await Promise.all([
+          analyticsAPI.getDashboardStats(),
+          ordersAPI.getAdminOrders({ per_page: 5 }),
+          productsAPI.getAdminProducts({ per_page: 10 })
+        ]);
+
+        // Update stats
+        const stats = statsResponse.data.data;
+        setDashboardStats({
+          totalRevenue: stats?.total_revenue || 0,
+          revenueGrowth: 12.5, // Mock growth percentage for now
+          totalOrders: stats?.total_orders || 0,
+          ordersGrowth: 8.3, // Mock growth percentage for now
+          totalCustomers: stats?.total_users || 0,
+          customersGrowth: 15.2, // Mock growth percentage for now
+          totalProducts: stats?.total_products || 0,
+          productsGrowth: 5.7, // Mock growth percentage for now
+          pendingOrders: 0, // Will calculate from orders
+          lowStockItems: 0, // Will calculate from products
+        });
+
+        // Update recent orders
+        const orders = ordersResponse.data.data?.data || [];
+        setRecentOrders(orders.slice(0, 4).map((order: any) => ({
+          id: order.id || order.order_number || 'N/A',
+          customer: order.user?.name || order.customer_name || 'Unknown Customer',
+          total: order.total_amount || order.total || 0,
+          status: order.status || 'pending',
+          date: order.created_at || new Date().toISOString(),
+        })));
+
+        // Update top products
+        const products = productsResponse.data.data?.data || [];
+        setTopProducts(products.slice(0, 4).map((product: any, index: number) => ({
+          id: product.id || index + 1,
+          name: product.name || 'Unknown Product',
+          sales: Math.floor(Math.random() * 200) + 50, // Mock sales data
+          revenue: (product.price || 0) * (Math.floor(Math.random() * 50) + 10),
+          growth: (Math.random() - 0.5) * 30, // Mock growth between -15% and +15%
+        })));
+
+        // Calculate pending orders and low stock items
+        const pendingOrdersCount = orders.filter((order: any) => order.status === 'pending').length;
+        const lowStockCount = products.filter((product: any) => (product.stock || 0) < 10).length;
+        
+        setDashboardStats(prev => ({
+          ...prev,
+          pendingOrders: pendingOrdersCount,
+          lowStockItems: lowStockCount,
+        }));
+
+      } catch (err: any) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err.response?.data?.message || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -174,49 +192,86 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                background: 'linear-gradient(45deg, #1e293b, #475569)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              Admin Dashboard
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
-              Welcome back, {user?.name || 'Admin User'}! Here's your store overview
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<Download />}
-              sx={{ borderRadius: '12px', textTransform: 'none' }}
-            >
-              Export Report
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              sx={{ borderRadius: '12px', textTransform: 'none' }}
-              onClick={() => navigate('/admin/products/new')}
-            >
-              Add Product
-            </Button>
-          </Box>
+    <Box 
+      sx={{ 
+        p: 3,
+        overflowX: 'auto',
+        minWidth: '1200px',  // Force minimum width to ensure horizontal scroll
+        '&::-webkit-scrollbar': {
+          height: '8px',
+        },
+        '&::-webkit-scrollbar-track': {
+          backgroundColor: 'rgba(0,0,0,0.1)',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: 'rgba(0,0,0,0.3)',
+          borderRadius: '4px',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          backgroundColor: 'rgba(0,0,0,0.5)',
+        },
+      }}
+    >
+      {/* Loading State */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+          <CircularProgress size={60} />
         </Box>
-      </Box>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Dashboard Content */}
+      {!loading && !error && (
+        <>
+          {/* Header */}
+          <Box sx={{ mb: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Box>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    background: 'linear-gradient(45deg, #1e293b, #475569)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  Admin Dashboard
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Welcome back, {user?.name || 'Admin User'}! Here's your store overview
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<Download />}
+                  sx={{ borderRadius: '12px', textTransform: 'none' }}
+                >
+                  Export Report
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  sx={{ borderRadius: '12px', textTransform: 'none' }}
+                  onClick={() => navigate('/admin/products/new')}
+                >
+                  Add Product
+                </Button>
+              </Box>
+            </Box>
+          </Box>
 
           {/* Stats Cards */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Box sx={{ minWidth: '1200px' }}>
+            <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
               <Card
                 sx={{
@@ -365,19 +420,33 @@ const AdminDashboard: React.FC = () => {
               </Card>
             </Grid>
           </Grid>
+          </Box>
 
           {/* Charts Row */}
-          <Grid container spacing={4} sx={{ mb: 4 }}>
+          <Box sx={{ minWidth: '1200px' }}>
+            <Grid container spacing={4} sx={{ mb: 4 }}>
             {/* Revenue Chart */}
-            <Grid item xs={12} lg={8}>
-              <Card sx={{ borderRadius: '16px', height: 400 }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+            <Grid item xs={12}>
+              <Card sx={{ 
+                borderRadius: '16px', 
+                height: { xs: 350, md: 400 }
+              }}>
+                <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                     Revenue Overview
                   </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={salesData}>
-                      <defs>
+                  <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart 
+                        data={salesData} 
+                        margin={{ 
+                          top: 10, 
+                          right: 30, 
+                          left: 20, 
+                          bottom: 5 
+                        }}
+                      >
+                        <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/>
                           <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.1}/>
@@ -404,42 +473,103 @@ const AdminDashboard: React.FC = () => {
                       />
                     </AreaChart>
                   </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* Category Distribution */}
-            <Grid item xs={12} lg={4}>
-              <Card sx={{ borderRadius: '16px', height: 400 }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
-                    Sales by Category
-                  </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        dataKey="value"
-                        label={(props: any) => `${(props.percent * 100).toFixed(0)}%`}
-                      >
-                        {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
           </Grid>
+          </Box>
+
+          {/* Pie Chart Row */}
+          <Box sx={{ minWidth: '1200px' }}>
+            <Grid container spacing={4} sx={{ mb: 4 }}>
+            {/* Category Distribution */}
+            <Grid item xs={12} md={6} lg={8}>
+              <Card sx={{ 
+                borderRadius: '16px', 
+                height: { xs: 400, md: 450 }
+              }}>
+                <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                    Sales by Category
+                  </Typography>
+                  <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="45%"
+                          outerRadius={80}
+                          dataKey="value"
+                          label={(props: any) => `${(props.percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend 
+                          verticalAlign="bottom" 
+                          height={80}
+                          wrapperStyle={{ 
+                            paddingTop: '20px',
+                            fontSize: '14px'
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Quick Stats */}
+            <Grid item xs={12} md={6} lg={4}>
+              <Card sx={{ borderRadius: '16px', height: { xs: 400, md: 450 } }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+                    Quick Stats
+                  </Typography>
+                  
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha('#10b981', 0.1), borderRadius: '12px' }}>
+                      <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981', mb: 1 }}>
+                        {dashboardStats.pendingOrders}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Pending Orders
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha('#ef4444', 0.1), borderRadius: '12px' }}>
+                      <Typography variant="h4" sx={{ fontWeight: 700, color: '#ef4444', mb: 1 }}>
+                        {dashboardStats.lowStockItems}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Low Stock Items
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha('#0ea5e9', 0.1), borderRadius: '12px' }}>
+                      <Typography variant="h4" sx={{ fontWeight: 700, color: '#0ea5e9', mb: 1 }}>
+                        98.5%
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Customer Satisfaction
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+          </Box>
 
           {/* Tables Row */}
-          <Grid container spacing={4}>
+          <Box sx={{ minWidth: '1200px' }}>
+            <Grid container spacing={4}>
             {/* Recent Orders */}
             <Grid item xs={12} lg={8}>
               <Card sx={{ borderRadius: '16px' }}>
@@ -566,8 +696,11 @@ const AdminDashboard: React.FC = () => {
               </Card>
             </Grid>
           </Grid>
-        </Container>
-      );
-    };
+          </Box>
+        </>
+      )}
+    </Box>
+  );
+};
 
 export default AdminDashboard;

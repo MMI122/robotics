@@ -100,6 +100,60 @@ class ProductController extends Controller
     }
 
     /**
+     * Display a listing of all products for admin (including inactive)
+     */
+    public function adminIndex(Request $request)
+    {
+        $perPage = $request->get('per_page', 12);
+        $sortBy = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc');
+        $category = $request->get('category');
+        $search = $request->get('search');
+        $status = $request->get('status'); // active, inactive, all
+
+        $query = Product::with(['category', 'reviews']);
+
+        // Status filter for admin
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        }
+        // If status is 'all' or not provided, show all products
+
+        // Search functionality
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('description', 'LIKE', "%{$search}%")
+                  ->orWhere('sku', 'LIKE', "%{$search}%")
+                  ->orWhere('short_description', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Category filter
+        if ($category) {
+            $query->whereHas('category', function ($q) use ($category) {
+                $q->where('slug', $category)->orWhere('id', $category);
+            });
+        }
+
+        // Sorting
+        $allowedSortFields = ['name', 'price', 'stock_quantity', 'created_at', 'updated_at'];
+        if (in_array($sortBy, $allowedSortFields)) {
+            $query->orderBy($sortBy, $sortDirection);
+        }
+
+        $products = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $products,
+            'message' => 'Products retrieved successfully'
+        ]);
+    }
+
+    /**
      * Get featured products
      */
     public function featured()

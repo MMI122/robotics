@@ -15,21 +15,23 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Create Admin User
-        User::create([
-            'name' => 'Admin User',
-            'email' => 'admin@roboticsshop.com',
-            'email_verified_at' => now(),
-            'password' => Hash::make('password123'),
-            'phone' => '+880123456789',
-            'address' => 'House#5, Road#3, Sector#7, Uttara, Dhaka',
-            'city' => 'Dhaka',
-            'state' => 'Dhaka',
-            'country' => 'Bangladesh',
-            'postal_code' => '1230',
-            'role' => 'admin',
-            'is_active' => true,
-            'last_login_at' => now(),
-        ]);
+        User::firstOrCreate(
+            ['email' => 'admin@roboticsshop.com'],
+            [
+                'name' => 'Admin User',
+                'email_verified_at' => now(),
+                'password' => Hash::make('password123'),
+                'phone' => '+880123456789',
+                'address' => 'House#5, Road#3, Sector#7, Uttara, Dhaka',
+                'city' => 'Dhaka',
+                'state' => 'Dhaka',
+                'country' => 'Bangladesh',
+                'postal_code' => '1230',
+                'role' => 'admin',
+                'is_active' => true,
+                'last_login_at' => now(),
+            ]
+        );
 
         // Create Sample Customers
         $customers = [
@@ -74,7 +76,10 @@ class UserSeeder extends Seeder
         foreach ($customers as $customer) {
             $customer['email_verified_at'] = now();
             $customer['is_active'] = true;
-            User::create($customer);
+            User::firstOrCreate(
+                ['email' => $customer['email']],
+                $customer
+            );
         }
     }
 }

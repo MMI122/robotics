@@ -58,22 +58,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import AdminSidebar from '../../components/dashboards/AdminSidebar';
-
-const AdminContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  minHeight: '100vh',
-  backgroundColor: theme.palette.grey[50],
-}));
-
-const MainContent = styled(Box)(({ theme }) => ({
-  flexGrow: 1,
-  padding: theme.spacing(3),
-  marginLeft: 280,
-  [theme.breakpoints.down('md')]: {
-    marginLeft: 0,
-  },
-}));
+import { productsAPI, categoriesAPI } from '../../services/api';
 
 const ImageUploadArea = styled(Box)(({ theme }) => ({
   border: `2px dashed ${theme.palette.divider}`,
@@ -130,6 +115,11 @@ interface ProductVariant {
   sku?: string;
 }
 
+interface Specification {
+  key: string;
+  value: string;
+}
+
 const validationSchema = Yup.object({
   name: Yup.string().required('Product name is required').min(3, 'Minimum 3 characters'),
   slug: Yup.string().required('Slug is required'),
@@ -148,23 +138,42 @@ const AdminProductForm: React.FC = () => {
   const { id } = useParams();
   const isEdit = Boolean(id);
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [images, setImages] = useState<ProductImage[]>([]);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [specifications, setSpecifications] = useState<Specification[]>([]);
+  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
 
-  // Mock categories
-  const categories = [
-    { id: 1, name: 'Microcontrollers' },
-    { id: 2, name: 'Sensors' },
-    { id: 3, name: 'Robot Kits' },
-    { id: 4, name: 'Motors & Actuators' },
-    { id: 5, name: 'Development Boards' },
-    { id: 6, name: 'Components' }
-  ];
+  // Load categories from API
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await categoriesAPI.getCategories();
+        const categoriesData = response.data.data;
+        if (categoriesData && Array.isArray(categoriesData)) {
+          setCategories(categoriesData.map(cat => ({ id: cat.id, name: cat.name })));
+        } else {
+          throw new Error('Invalid categories data received');
+        }
+      } catch (error) {
+        console.error('Error loading categories:', error);
+        // Fallback to mock data if API fails
+        setCategories([
+          { id: 1, name: 'Microcontrollers' },
+          { id: 2, name: 'Sensors' },
+          { id: 3, name: 'Robot Kits' },
+          { id: 4, name: 'Motors & Actuators' },
+          { id: 5, name: 'Development Boards' },
+          { id: 6, name: 'Components' }
+        ]);
+      }
+    };
+    
+    loadCategories();
+  }, []);
 
   const formik = useFormik({
     initialValues: {
@@ -192,15 +201,84 @@ const AdminProductForm: React.FC = () => {
     onSubmit: async (values) => {
       setSaving(true);
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Create FormData object for file upload
+        const formData = new FormData();
         
-        console.log('Saving product:', values, images, variants);
+        // Add all form fields to FormData
+        formData.append('name', values.name);
+        formData.append('slug', values.slug);
+        formData.append('description', values.description);
+        formData.append('short_description', values.shortDescription);
+        formData.append('sku', values.sku);
+        formData.append('price', values.price.toString());
+        if (values.salePrice) {
+          formData.append('sale_price', values.salePrice.toString());
+        }
+        formData.append('category_id', values.categoryId.toString());
+        formData.append('stock_quantity', values.stockQuantity.toString());
+        formData.append('manage_stock', values.manageStock ? '1' : '0');
+        formData.append('weight', values.weight.toString());
+        formData.append('dimensions', values.dimensions);
+        formData.append('tags', values.tags);
+        formData.append('meta_title', values.metaTitle);
+        formData.append('meta_description', values.metaDescription);
+        formData.append('is_active', values.isActive ? '1' : '0');
+        formData.append('is_featured', values.isFeatured ? '1' : '0');
+        formData.append('allow_backorders', values.allowBackorders ? '1' : '0');
+        formData.append('track_quantity', values.trackQuantity ? '1' : '0');
+        
+        // Add specifications as JSON
+        if (specifications.length > 0) {
+          formData.append('specifications', JSON.stringify(
+            specifications.reduce((acc, spec) => {
+              acc[spec.key] = spec.value;
+              return acc;
+            }, {} as Record<string, string>)
+          ));
+        }
+        
+        // Add variants as JSON
+        if (variants.length > 0) {
+          formData.append('variants', JSON.stringify(variants));
+        }
+        
+        // Add images
+        images.forEach((image, index) => {
+          if (image.file) {
+            if (image.isPrimary) {
+              // Set the primary image as featured_image
+              formData.append('featured_image', image.file);
+            }
+            // Also add all images to the images array
+            formData.append('images[]', image.file);
+          }
+        });
+        
+        // If no primary image is set, use the first image as featured
+        if (images.length > 0 && !images.some(img => img.isPrimary) && images[0].file) {
+          formData.append('featured_image', images[0].file);
+        }
+        
+        console.log('Saving product with data:', Object.fromEntries(formData.entries()));
+        
+        // Call the API
+        const response = await productsAPI.createProduct(formData);
+        
+        console.log('Product saved successfully:', response.data);
         
         // Navigate back to products list
         navigate('/admin/products');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error saving product:', error);
+        
+        // Log detailed error information
+        if (error.response) {
+          console.error('Error response:', error.response.data);
+          console.error('Error status:', error.response.status);
+        }
+        
+        // Show error to user (you might want to add a state for this)
+        alert('Failed to save product. Please check the console for details.');
       } finally {
         setSaving(false);
       }
@@ -319,31 +397,41 @@ const AdminProductForm: React.FC = () => {
     setVariants(prev => prev.filter(variant => variant.id !== id));
   };
 
+  // Specification management functions
+  const addSpecification = () => {
+    const newSpec: Specification = {
+      key: '',
+      value: '',
+    };
+    setSpecifications(prev => [...prev, newSpec]);
+  };
+
+  const updateSpecification = (index: number, field: keyof Specification, value: string) => {
+    setSpecifications(prev => prev.map((spec, i) => 
+      i === index ? { ...spec, [field]: value } : spec
+    ));
+  };
+
+  const deleteSpecification = (index: number) => {
+    setSpecifications(prev => prev.filter((_, i) => i !== index));
+  };
+
   if (loading) {
     return (
-      <AdminContainer>
-        <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <MainContent>
-          <Backdrop open sx={{ color: '#fff', zIndex: theme.zIndex.drawer + 1 }}>
-            <CircularProgress color="inherit" />
-            <Typography variant="h6" sx={{ ml: 2 }}>
-              Loading product...
-            </Typography>
-          </Backdrop>
-        </MainContent>
-      </AdminContainer>
+      <Backdrop open sx={{ color: '#fff', zIndex: theme.zIndex.drawer + 1 }}>
+        <CircularProgress color="inherit" />
+        <Typography variant="h6" sx={{ ml: 2 }}>
+          Loading product...
+        </Typography>
+      </Backdrop>
     );
   }
 
   return (
-    <AdminContainer>
-      <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
-      <MainContent>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
         >
           {/* Header */}
           <Box sx={{ mb: 3 }}>
@@ -889,8 +977,6 @@ const AdminProductForm: React.FC = () => {
             </Box>
           </Box>
         </motion.div>
-      </MainContent>
-    </AdminContainer>
   );
 };
 
