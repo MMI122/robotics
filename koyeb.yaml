@@ -1,0 +1,36 @@
+name: roboticsshop-backend
+
+services:
+  - name: laravel-api
+    type: web
+    ports:
+      - port: 8080
+        protocol: http
+    env:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: error
+      - key: PORT
+        value: "8080"
+    routes:
+      - path: /
+        port: 8080
+        protocol: https
+        strip_path: false
+        healthcheck:
+          path: /api/health
+          interval: 10s
+          timeout: 3s
+          grace_period: 30s
+          method: GET
+    docker:
+      dockerfile: Dockerfile
+      build_context: .
+    env_from:
+      - type: secret_group
+        name: roboticsshop-secrets
+
+
