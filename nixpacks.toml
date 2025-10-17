@@ -8,7 +8,8 @@ cmds = ["cd backend && composer install --no-dev --optimize-autoloader"]
 cmds = [
     "cd backend && php artisan config:clear",
     "cd backend && php artisan cache:clear",
-    "cd backend && php artisan view:clear"
+    "cd backend && php artisan view:clear",
+    "cd backend && php artisan migrate --force"
 ]
 
 [start]
