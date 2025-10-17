@@ -49,6 +49,10 @@ import {
 import { styled } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useAppSelector, useAppDispatch } from '../hooks/redux';
+import { fetchWishlist, removeFromWishlist } from '../store/slices/wishlistSlice';
+import { addToCart } from '../store/slices/cartSlice';
+import { getProductImageUrl } from '../utils/imageUtils';
 
 const StyledCard = styled(Card)(({ theme }) => ({
   height: '100%',
@@ -78,26 +82,6 @@ const ProductActions = styled(Box)(({ theme }) => ({
   gap: theme.spacing(0.5),
 }));
 
-interface WishlistItem {
-  id: string;
-  productId: string;
-  name: string;
-  slug: string;
-  description: string;
-  price: number;
-  originalPrice?: number;
-  images: string[];
-  category: string;
-  brand: string;
-  rating: number;
-  reviewCount: number;
-  stock: number;
-  isOnSale: boolean;
-  addedAt: string;
-  isAvailable: boolean;
-  priceDropPercentage?: number;
-}
-
 interface WishlistStats {
   totalItems: number;
   totalValue: number;
@@ -109,117 +93,83 @@ const WishlistPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
-  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
-  const [stats, setStats] = useState<WishlistStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  // Get auth state
+  const { isAuthenticated, user } = useAppSelector((state: any) => state.auth);
+  
+  // Get wishlist data from Redux store
+  const { items: wishlistItems, loading, error } = useAppSelector((state) => state.wishlist);
+
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [selectedItem, setSelectedItem] = useState<WishlistItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [createListDialogOpen, setCreateListDialogOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
 
-  // Mock data - replace with real API calls
+  // Fetch wishlist data on component mount
   useEffect(() => {
-    const fetchWishlistData = async () => {
-      setLoading(true);
-      
-      setTimeout(() => {
-        const mockItems: WishlistItem[] = [
-          {
-            id: 'wish1',
-            productId: '1',
-            name: 'Arduino Uno R3 Microcontroller Board',
-            slug: 'arduino-uno-r3',
-            description: 'The most popular Arduino board, perfect for beginners and professionals alike.',
-            price: 29.99,
-            originalPrice: 34.99,
-            images: ['/api/placeholder/400/300'],
-            category: 'Microcontrollers',
-            brand: 'Arduino',
-            rating: 4.8,
-            reviewCount: 124,
-            stock: 45,
-            isOnSale: true,
-            addedAt: '2024-01-15T10:30:00Z',
-            isAvailable: true,
-            priceDropPercentage: 15
-          },
-          {
-            id: 'wish2',
-            productId: '2',
-            name: 'Raspberry Pi 4 Model B 8GB',
-            slug: 'raspberry-pi-4-8gb',
-            description: 'Latest Raspberry Pi with 8GB RAM for demanding applications.',
-            price: 89.99,
-            images: ['/api/placeholder/400/300'],
-            category: 'Microcontrollers',
-            brand: 'Raspberry Pi',
-            rating: 4.9,
-            reviewCount: 89,
-            stock: 23,
-            isOnSale: false,
-            addedAt: '2024-01-12T14:22:00Z',
-            isAvailable: true
-          },
-          {
-            id: 'wish3',
-            productId: '3',
-            name: 'Advanced Robot Arm Kit',
-            slug: 'advanced-robot-arm-kit',
-            description: 'Professional-grade robot arm kit with precision servos and controllers.',
-            price: 299.99,
-            originalPrice: 349.99,
-            images: ['/api/placeholder/400/300'],
-            category: 'Robot Kits',
-            brand: 'RoboTech',
-            rating: 4.7,
-            reviewCount: 34,
-            stock: 0,
-            isOnSale: true,
-            addedAt: '2024-01-08T09:15:00Z',
-            isAvailable: false,
-            priceDropPercentage: 14
-          },
-          {
-            id: 'wish4',
-            productId: '4',
-            name: 'Ultrasonic Distance Sensor HC-SR04',
-            slug: 'ultrasonic-sensor-hc-sr04',
-            description: 'Accurate distance measurement from 2cm to 400cm.',
-            price: 8.99,
-            originalPrice: 12.99,
-            images: ['/api/placeholder/400/300'],
-            category: 'Sensors',
-            brand: 'Generic',
-            rating: 4.5,
-            reviewCount: 67,
-            stock: 156,
-            isOnSale: true,
-            addedAt: '2024-01-05T16:45:00Z',
-            isAvailable: true,
-            priceDropPercentage: 31
-          }
-        ];
+    if (isAuthenticated) {
+      console.log('Fetching wishlist...');
+      dispatch(fetchWishlist());
+    }
+  }, [dispatch, isAuthenticated]);
 
-        const mockStats: WishlistStats = {
-          totalItems: mockItems.length,
-          totalValue: mockItems.reduce((sum, item) => sum + item.price, 0),
-          onSaleItems: mockItems.filter(item => item.isOnSale).length,
-          averageRating: mockItems.reduce((sum, item) => sum + item.rating, 0) / mockItems.length
-        };
+  // Add error handling
+  useEffect(() => {
+    if (error) {
+      console.error('Wishlist error:', error);
+    }
+  }, [error]);
 
-        setWishlistItems(mockItems);
-        setStats(mockStats);
-        setLoading(false);
-      }, 1000);
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h5" gutterBottom>
+            Please log in to view your wishlist
+          </Typography>
+          <Button 
+            variant="contained" 
+            onClick={() => navigate('/login')}
+          >
+            Go to Login
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
+
+  // Calculate stats based on real wishlist data
+  const stats = React.useMemo(() => {
+    if (!wishlistItems.length) return null;
+
+    const totalItems = wishlistItems.length;
+    const totalValue = wishlistItems.reduce((sum, item) => {
+      const price = Number(item.product?.sale_price) || Number(item.product?.price) || 0;
+      return sum + price;
+    }, 0);
+    const onSaleItems = wishlistItems.filter(item => 
+      item.product?.sale_price && Number(item.product.sale_price) < Number(item.product.price)
+    ).length;
+    const averageRating = wishlistItems.length > 0 
+      ? wishlistItems.reduce((sum, item) => 
+          sum + (item.product?.avg_rating || 0), 0
+        ) / totalItems 
+      : 0;
+
+    return {
+      totalItems,
+      totalValue: Number(totalValue),
+      onSaleItems,
+      averageRating: Number(averageRating),
     };
+  }, [wishlistItems]);
 
-    fetchWishlistData();
-  }, []);
-
-  const handleSelectItem = (itemId: string, selected: boolean) => {
+  // Helper functions
+  const handleSelectItem = (itemId: number, selected: boolean) => {
     if (selected) {
       setSelectedItems(prev => [...prev, itemId]);
     } else {
@@ -235,27 +185,37 @@ const WishlistPage: React.FC = () => {
     }
   };
 
-  const handleRemoveItem = (itemId: string) => {
-    setWishlistItems(prev => prev.filter(item => item.id !== itemId));
-    setSelectedItems(prev => prev.filter(id => id !== itemId));
+  const handleRemoveItem = (productId: number) => {
+    dispatch(removeFromWishlist(productId));
+    setSelectedItems(prev => prev.filter(id => id !== productId));
   };
 
   const handleRemoveSelected = () => {
-    setWishlistItems(prev => prev.filter(item => !selectedItems.includes(item.id)));
+    selectedItems.forEach(productId => {
+      // Find the wishlist item to get the product ID
+      const wishlistItem = wishlistItems.find(item => item.id === productId);
+      if (wishlistItem?.product?.id) {
+        dispatch(removeFromWishlist(wishlistItem.product.id));
+      }
+    });
     setSelectedItems([]);
   };
 
-  const handleAddToCart = (item: WishlistItem) => {
-    // Add to cart logic
-    console.log('Adding to cart:', item.name);
+  const handleAddToCart = (item: any) => {
+    dispatch(addToCart({ 
+      productId: item.product.id, 
+      quantity: 1 
+    }));
   };
 
   const handleAddSelectedToCart = () => {
-    const selectedProducts = wishlistItems.filter(item => selectedItems.includes(item.id) && item.isAvailable);
+    const selectedProducts = wishlistItems.filter(item => 
+      selectedItems.includes(item.id) && item.product?.in_stock
+    );
     selectedProducts.forEach(item => handleAddToCart(item));
   };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, item: WishlistItem) => {
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, item: any) => {
     setMenuAnchor(event.currentTarget);
     setSelectedItem(item);
   };
@@ -296,6 +256,27 @@ const WishlistPage: React.FC = () => {
             </Grid>
           ))}
         </Grid>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h5" color="error" gutterBottom>
+            Failed to load wishlist
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            {error}
+          </Typography>
+          <Button 
+            variant="contained" 
+            onClick={() => dispatch(fetchWishlist())}
+          >
+            Retry
+          </Button>
+        </Box>
       </Container>
     );
   }
@@ -418,7 +399,7 @@ const WishlistPage: React.FC = () => {
                               variant="contained"
                               startIcon={<CartIcon />}
                               onClick={handleAddSelectedToCart}
-                              disabled={!wishlistItems.some(item => selectedItems.includes(item.id) && item.isAvailable)}
+                              disabled={!wishlistItems.some(item => selectedItems.includes(item.id) && item.product?.in_stock)}
                             >
                               Add Selected to Cart
                             </Button>
@@ -446,13 +427,17 @@ const WishlistPage: React.FC = () => {
               </Box>
 
               {/* Price Drop Alerts */}
-              {wishlistItems.some(item => item.priceDropPercentage) && (
+              {wishlistItems.some(item => 
+                item.product?.sale_price && Number(item.product.sale_price) < Number(item.product.price)
+              ) && (
                 <Alert severity="success" sx={{ mb: 4 }}>
                   <Typography variant="h6" gutterBottom>
                     🎉 Price Drops Alert!
                   </Typography>
                   <Typography variant="body2">
-                    {wishlistItems.filter(item => item.priceDropPercentage).length} items in your wishlist have price drops. 
+                    {wishlistItems.filter(item => 
+                      item.product?.sale_price && Number(item.product.sale_price) < Number(item.product.price)
+                    ).length} items in your wishlist have price drops. 
                     Don't miss out on these deals!
                   </Typography>
                 </Alert>
@@ -461,7 +446,16 @@ const WishlistPage: React.FC = () => {
               {/* Wishlist Items */}
               <AnimatePresence>
                 <Grid container spacing={3}>
-                  {wishlistItems.map((item) => (
+                  {wishlistItems.map((item) => {
+                    const product = item.product;
+                    if (!product) return null;
+                    
+                    const hasDiscount = product.sale_price && Number(product.sale_price) < Number(product.price);
+                    const discountPercentage = hasDiscount 
+                      ? Math.round((1 - Number(product.sale_price) / Number(product.price)) * 100)
+                      : 0;
+
+                    return (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={item.id}>
                       <motion.div
                         layout
@@ -497,9 +491,9 @@ const WishlistPage: React.FC = () => {
                           </ProductActions>
 
                           {/* Price Drop Badge */}
-                          {item.priceDropPercentage && (
+                          {hasDiscount && (
                             <Chip
-                              label={`${item.priceDropPercentage}% OFF`}
+                              label={`${discountPercentage}% OFF`}
                               color="error"
                               size="small"
                               sx={{
@@ -515,9 +509,9 @@ const WishlistPage: React.FC = () => {
                           <CardMedia
                             component="img"
                             height="200"
-                            image={item.images[0]}
-                            alt={item.name}
-                            onClick={() => navigate(`/products/${item.slug}`)}
+                            image={getProductImageUrl(product.featured_image)}
+                            alt={product.name}
+                            onClick={() => navigate(`/products/${product.slug}`)}
                             sx={{ cursor: 'pointer' }}
                           />
 
@@ -536,37 +530,37 @@ const WishlistPage: React.FC = () => {
                                   WebkitBoxOrient: 'vertical',
                                   cursor: 'pointer'
                                 }}
-                                onClick={() => navigate(`/products/${item.slug}`)}
+                                onClick={() => navigate(`/products/${product.slug}`)}
                               >
-                                {item.name}
+                                {product.name}
                               </Typography>
                               
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <Rating value={item.rating} readOnly size="small" precision={0.1} />
+                                <Rating value={product.avg_rating || 0} readOnly size="small" precision={0.1} />
                                 <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                  ({item.reviewCount})
+                                  ({product.review_count || 0})
                                 </Typography>
                               </Box>
                               
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                                 <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                                  ${item.price.toFixed(2)}
+                                  ${(Number(product.sale_price) || Number(product.price) || 0).toFixed(2)}
                                 </Typography>
-                                {item.originalPrice && (
+                                {hasDiscount && (
                                   <Typography 
                                     variant="body2" 
                                     sx={{ textDecoration: 'line-through', color: 'text.secondary' }}
                                   >
-                                    ${item.originalPrice.toFixed(2)}
+                                    ${(Number(product.price) || 0).toFixed(2)}
                                   </Typography>
                                 )}
-                                {item.isOnSale && (
+                                {hasDiscount && (
                                   <Chip label="Sale" size="small" color="error" />
                                 )}
                               </Box>
 
                               {/* Stock Status */}
-                              {!item.isAvailable && (
+                              {!product.in_stock && (
                                 <Chip 
                                   label="Out of Stock" 
                                   size="small" 
@@ -582,14 +576,14 @@ const WishlistPage: React.FC = () => {
                                 variant="contained"
                                 fullWidth
                                 startIcon={<CartIcon />}
-                                disabled={!item.isAvailable}
+                                disabled={!product.in_stock}
                                 onClick={() => handleAddToCart(item)}
                               >
-                                {item.isAvailable ? 'Add to Cart' : 'Notify Me'}
+                                {product.in_stock ? 'Add to Cart' : 'Notify Me'}
                               </Button>
                               <IconButton
                                 color="error"
-                                onClick={() => handleRemoveItem(item.id)}
+                                onClick={() => handleRemoveItem(product.id)}
                                 sx={{ borderRadius: 1 }}
                               >
                                 <DeleteIcon />
@@ -599,7 +593,8 @@ const WishlistPage: React.FC = () => {
                         </StyledCard>
                       </motion.div>
                     </Grid>
-                  ))}
+                    );
+                  })}
                 </Grid>
               </AnimatePresence>
             </>
@@ -616,14 +611,14 @@ const WishlistPage: React.FC = () => {
               Share Product
             </MenuItem>
             <MenuItem onClick={() => {
-              if (selectedItem) navigate(`/products/${selectedItem.slug}`);
+              if (selectedItem) navigate(`/products/${selectedItem.product.slug}`);
               handleMenuClose();
             }}>
               <LinkIcon sx={{ mr: 1 }} />
               View Product
             </MenuItem>
             <MenuItem onClick={() => {
-              if (selectedItem) handleRemoveItem(selectedItem.id);
+              if (selectedItem?.product?.id) handleRemoveItem(selectedItem.product.id);
               handleMenuClose();
             }}>
               <DeleteIcon sx={{ mr: 1 }} />

@@ -27,6 +27,7 @@ import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { addToCart } from '../../store/slices/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../../store/slices/wishlistSlice';
+import { openQuickView } from '../../store/slices/uiSlice';
 import { Product } from '../../types';
 import { getProductImageUrl } from '../../utils/imageUtils';
 
@@ -45,7 +46,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const dispatch = useAppDispatch();
   
   const { items: wishlistItems } = useAppSelector((state) => state.wishlist);
-  const isInWishlist = Array.isArray(wishlistItems) && wishlistItems.some((item) => item.id === product.id);
+  const isInWishlist = Array.isArray(wishlistItems) && wishlistItems.some((item) => item.product?.id === product.id);
   
   const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
   const salePrice = product.sale_price 
@@ -216,7 +217,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  window.location.href = `/products/${product.slug}`;
+                  dispatch(openQuickView(product));
                 }}
                 sx={{
                   backgroundColor: 'rgba(255,255,255,0.9)',

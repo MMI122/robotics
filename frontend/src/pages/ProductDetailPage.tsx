@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Container,
@@ -17,7 +17,9 @@ import {
   Link,
   CardMedia,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -32,10 +34,12 @@ import {
   LocalShipping as ShippingIcon,
   Security as SecurityIcon
 } from '@mui/icons-material';
-import { useAppDispatch } from '../hooks/redux';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import { fetchProduct } from '../store/slices/productsSlice';
 import { addToCart } from '../store/slices/cartSlice';
 import { addToWishlist } from '../store/slices/wishlistSlice';
 import ProductCard from '../components/products/ProductCard';
+import { getProductImageUrl } from '../utils/imageUtils';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -65,102 +69,86 @@ const ProductDetailPage: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const dispatch = useAppDispatch();
   
+  const { currentProduct: product, loading, error } = useAppSelector((state) => state.products);
+  
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [tabValue, setTabValue] = useState(0);
 
-  // Mock product data - replace with actual API call
-  const product = {
-    id: 1,
-    name: "Advanced AI Robot Kit",
-    price: 299.99,
-    originalPrice: 399.99,
-    rating: 4.8,
-    reviewCount: 124,
-    availability: "In Stock",
-    images: [
-      "/api/placeholder/600/600",
-      "/api/placeholder/600/600",
-      "/api/placeholder/600/600",
-      "/api/placeholder/600/600",
-    ],
-    description: "Complete AI robot kit with advanced sensors and programmable features. Perfect for educational purposes and hobbyist projects.",
-    features: [
-      "Advanced AI processing unit",
-      "Multiple sensors (ultrasonic, camera, gyroscope)",
-      "Programmable via Python and Scratch",
-      "Wireless connectivity (WiFi, Bluetooth)",
-      "Rechargeable battery - 8 hours runtime",
-      "Comprehensive documentation and tutorials"
-    ],
-    specifications: {
-      "Processor": "ARM Cortex-A72 quad-core",
-      "Memory": "4GB RAM, 32GB Storage",
-      "Sensors": "Camera, Ultrasonic, Gyroscope, Accelerometer",
-      "Connectivity": "WiFi 802.11ac, Bluetooth 5.0",
-      "Battery": "7.4V 2500mAh Li-Po",
-      "Dimensions": "25 x 20 x 15 cm",
-      "Weight": "1.2 kg"
-    },
-    colors: ["Red", "Blue", "Black", "White"],
-    sizes: ["Standard", "Pro", "Educational"],
-    category: "AI Robots",
-    tags: ["AI", "Educational", "Programming", "Sensors"]
-  };
-
-  const reviews = [
-    {
-      id: 1,
-      user: "John Doe",
-      rating: 5,
-      comment: "Excellent robot kit! Very educational and fun to work with.",
-      date: "2024-01-15"
-    },
-    {
-      id: 2,
-      user: "Jane Smith", 
-      rating: 4,
-      comment: "Great quality but documentation could be better.",
-      date: "2024-01-10"
+  // Fetch product data when component mounts or ID changes
+  useEffect(() => {
+    if (id) {
+      dispatch(fetchProduct(id));
     }
-  ];
+  }, [id, dispatch]);
 
-  const relatedProducts = [
-    {
-      id: 2,
-      name: "Smart Sensor Module",
-      price: 49.99,
-      image: "/api/placeholder/300/300",
-      rating: 4.5
-    },
-    {
-      id: 3,
-      name: "Robot Programming Guide",
-      price: 29.99,
-      image: "/api/placeholder/300/300", 
-      rating: 4.7
-    },
-    {
-      id: 4,
-      name: "Advanced Camera Module",
-      price: 79.99,
-      image: "/api/placeholder/300/300",
-      rating: 4.6
-    }
-  ];
+  // Reset selected image when product changes
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [product]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+          <CircularProgress size={50} />
+        </Box>
+      </Container>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      </Container>
+    );
+  }
+
+  // Product not found
+  if (!product) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          Product not found
+        </Alert>
+      </Container>
+    );
+  }
+
+  // Get product images array, fallback to featured_image if no images array
+  const productImages = product.images && product.images.length > 0 
+    ? product.images 
+    : product.featured_image 
+      ? [product.featured_image] 
+      : ['/api/placeholder/600/600'];
 
   const handleAddToCart = () => {
     dispatch(addToCart({
       productId: product.id,
-      quantity
+      quantity,
     }));
   };
 
   const handleAddToWishlist = () => {
     dispatch(addToWishlist(product.id));
   };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(price);
+  };
+
+  const quantityIncrease = () => setQuantity(prev => prev + 1);
+  const quantityDecrease = () => setQuantity(prev => Math.max(1, prev - 1));
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -170,8 +158,8 @@ const ProductDetailPage: React.FC = () => {
       >
         <Link color="inherit" href="/">Home</Link>
         <Link color="inherit" href="/products">Products</Link>
-        <Link color="inherit" href={`/category/${product.category}`}>
-          {product.category}
+        <Link color="inherit" href={`/category/${product.category?.slug || 'products'}`}>
+          {product.category?.name || 'Products'}
         </Link>
         <Typography color="text.primary">{product.name}</Typography>
       </Breadcrumbs>
@@ -183,7 +171,7 @@ const ProductDetailPage: React.FC = () => {
             <CardMedia
               component="img"
               height="500"
-              image={product.images[selectedImage]}
+              image={getProductImageUrl(productImages[selectedImage])}
               alt={product.name}
               sx={{ 
                 borderRadius: 2,
@@ -210,25 +198,27 @@ const ProductDetailPage: React.FC = () => {
           </Box>
 
           {/* Thumbnail images */}
-          <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto' }}>
-            {product.images.map((image, index) => (
-              <CardMedia
-                key={index}
-                component="img"
-                height="80"
-                image={image}
-                alt={`${product.name} ${index + 1}`}
-                sx={{
-                  minWidth: 80,
-                  borderRadius: 1,
-                  cursor: 'pointer',
-                  border: selectedImage === index ? '2px solid' : '2px solid transparent',
-                  borderColor: selectedImage === index ? 'primary.main' : 'transparent'
-                }}
-                onClick={() => setSelectedImage(index)}
-              />
-            ))}
-          </Box>
+          {productImages.length > 1 && (
+            <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto' }}>
+              {productImages.map((image, index) => (
+                <CardMedia
+                  key={index}
+                  component="img"
+                  height="80"
+                  image={getProductImageUrl(image)}
+                  alt={`${product.name} ${index + 1}`}
+                  sx={{
+                    minWidth: 80,
+                    borderRadius: 1,
+                    cursor: 'pointer',
+                    border: selectedImage === index ? '2px solid' : '2px solid transparent',
+                    borderColor: selectedImage === index ? 'primary.main' : 'transparent'
+                  }}
+                  onClick={() => setSelectedImage(index)}
+                />
+              ))}
+            </Box>
+          )}
         </Grid>
 
         {/* Product Details */}
@@ -238,17 +228,17 @@ const ProductDetailPage: React.FC = () => {
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <Rating value={product.rating} precision={0.1} readOnly />
+            <Rating value={product.avg_rating || 0} precision={0.1} readOnly />
             <Typography variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
-              ({product.reviewCount} reviews)
+              ({product.review_count || 0} reviews)
             </Typography>
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
             <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-              ${product.price}
+              {formatPrice(product.sale_price || product.price)}
             </Typography>
-            {product.originalPrice && (
+            {product.sale_price && product.sale_price < product.price && (
               <Typography 
                 variant="h5" 
                 sx={{ 
@@ -257,9 +247,18 @@ const ProductDetailPage: React.FC = () => {
                   color: 'text.secondary' 
                 }}
               >
-                ${product.originalPrice}
+                {formatPrice(product.price)}
               </Typography>
             )}
+          </Box>
+
+          {/* Stock Status */}
+          <Box sx={{ mb: 2 }}>
+            <Chip
+              label={product.in_stock ? 'In Stock' : 'Out of Stock'}
+              color={product.in_stock ? 'success' : 'error'}
+              size="small"
+            />
           </Box>
 
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
@@ -267,33 +266,37 @@ const ProductDetailPage: React.FC = () => {
           </Typography>
 
           {/* Quantity Selector */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" gutterBottom>Quantity:</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <IconButton 
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={quantity <= 1}
-              >
-                <RemoveIcon />
-              </IconButton>
-              <Typography variant="h6">{quantity}</Typography>
-              <IconButton onClick={() => setQuantity(quantity + 1)}>
-                <AddIcon />
-              </IconButton>
+          {product.in_stock && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>Quantity:</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <IconButton 
+                  onClick={quantityDecrease}
+                  disabled={quantity <= 1}
+                >
+                  <RemoveIcon />
+                </IconButton>
+                <Typography variant="h6">{quantity}</Typography>
+                <IconButton onClick={quantityIncrease}>
+                  <AddIcon />
+                </IconButton>
+              </Box>
             </Box>
-          </Box>
+          )}
 
           {/* Action Buttons */}
           <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<CartIcon />}
-              onClick={handleAddToCart}
-              sx={{ flex: 1 }}
-            >
-              Add to Cart
-            </Button>
+            {product.in_stock && (
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<CartIcon />}
+                onClick={handleAddToCart}
+                sx={{ flex: 1 }}
+              >
+                Add to Cart
+              </Button>
+            )}
             <IconButton onClick={handleAddToWishlist} size="large">
               <FavoriteBorderIcon />
             </IconButton>
@@ -337,66 +340,46 @@ const ProductDetailPage: React.FC = () => {
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={2}>
-            {Object.entries(product.specifications).map(([key, value]) => (
-              <Grid item xs={12} sm={6} key={key}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {key}:
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {value}
-                  </Typography>
-                </Box>
-                <Divider />
-              </Grid>
-            ))}
-          </Grid>
+          {product.specifications && Object.keys(product.specifications).length > 0 ? (
+            <Grid container spacing={2}>
+              {Object.entries(product.specifications).map(([key, value]) => (
+                <Grid item xs={12} sm={6} key={key}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {key}:
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {value}
+                    </Typography>
+                  </Box>
+                  <Divider />
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Typography variant="body1" color="text.secondary">
+              No specifications available for this product.
+            </Typography>
+          )}
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          {product.features.map((feature, index) => (
-            <Paper key={index} sx={{ p: 2, mb: 2 }}>
-              <Typography variant="body1">{feature}</Typography>
-            </Paper>
-          ))}
+          {product.short_description || product.description ? (
+            <Typography variant="body1" sx={{ lineHeight: 1.8 }}>
+              {product.short_description || product.description}
+            </Typography>
+          ) : (
+            <Typography variant="body1" color="text.secondary">
+              No additional details available for this product.
+            </Typography>
+          )}
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Customer Reviews ({reviews.length})
-            </Typography>
-            {reviews.map((review) => (
-              <Paper key={review.id} sx={{ p: 2, mb: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    {review.user}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {review.date}
-                  </Typography>
-                </Box>
-                <Rating value={review.rating} readOnly size="small" sx={{ mb: 1 }} />
-                <Typography variant="body2">{review.comment}</Typography>
-              </Paper>
-            ))}
-          </Box>
+          <Typography variant="body1" color="text.secondary">
+            Reviews will be available soon.
+          </Typography>
         </TabPanel>
-      </Box>
-
-      {/* Related Products */}
-      <Box sx={{ mt: 6 }}>
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-          Related Products
-        </Typography>
-        <Grid container spacing={3}>
-          {relatedProducts.map((relatedProduct) => (
-            <Grid item xs={12} sm={6} md={4} key={relatedProduct.id}>
-              <ProductCard product={relatedProduct as any} />
-            </Grid>
-          ))}
-        </Grid>
       </Box>
     </Container>
   );

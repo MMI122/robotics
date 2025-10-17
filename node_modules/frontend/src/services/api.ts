@@ -195,8 +195,8 @@ export const wishlistAPI = {
   addToWishlist: (productId: number): Promise<AxiosResponse<ApiResponse<Wishlist>>> =>
     api.post('/wishlist', { product_id: productId }),
   
-  removeFromWishlist: (id: number): Promise<AxiosResponse<ApiResponse>> =>
-    api.delete(`/wishlist/${id}`),
+  removeFromWishlist: (productId: number): Promise<AxiosResponse<ApiResponse>> =>
+    api.delete('/wishlist', { data: { product_id: productId } }),
 };
 
 // Reviews API

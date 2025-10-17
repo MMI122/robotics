@@ -66,6 +66,9 @@ import PrivacyPage from './pages/PrivacyPage';
 import NotFoundPage from './pages/NotFoundPage';
 import SimpleCheckoutPage from './pages/SimpleCheckoutPage';
 
+// Components
+import ProductQuickView from './components/products/ProductQuickView';
+
 // Redux Actions
 import { getCurrentUser } from './store/slices/authSlice';
 import { fetchCategories } from './store/slices/categoriesSlice';
@@ -280,6 +283,9 @@ const AppContent: React.FC = () => {
         theme="light"
         style={{ zIndex: 9999 }}
       />
+
+      {/* Product Quick View Modal */}
+      <ProductQuickView />
     </>
   );
 };

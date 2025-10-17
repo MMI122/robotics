@@ -19,7 +19,17 @@ export const fetchWishlist = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await wishlistAPI.getWishlist();
-      return response.data.data!;
+      // Handle paginated response from backend
+      const data = response.data.data;
+      if (!data) return [];
+      
+      // Check if it's a paginated response with a data property
+      if (typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
+        return data.data;
+      }
+      
+      // Otherwise assume it's an array
+      return Array.isArray(data) ? data : [];
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch wishlist');
     }
@@ -40,10 +50,10 @@ export const addToWishlist = createAsyncThunk(
 
 export const removeFromWishlist = createAsyncThunk(
   'wishlist/removeFromWishlist',
-  async (id: number, { rejectWithValue }) => {
+  async (productId: number, { rejectWithValue }) => {
     try {
-      await wishlistAPI.removeFromWishlist(id);
-      return id;
+      await wishlistAPI.removeFromWishlist(productId);
+      return productId;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to remove from wishlist');
     }
@@ -77,7 +87,7 @@ const wishlistSlice = createSlice({
         state.items.push(action.payload);
       })
       .addCase(removeFromWishlist.fulfilled, (state, action) => {
-        state.items = state.items.filter(item => item.id !== action.payload);
+        state.items = state.items.filter(item => item.product?.id !== action.payload);
       });
   },
 });
