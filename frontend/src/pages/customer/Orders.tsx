@@ -58,6 +58,7 @@ import { styled } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { ordersAPI } from '../../services/api';
 
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(2),
@@ -144,175 +145,59 @@ const CustomerOrders: React.FC = () => {
   const [actionOrderId, setActionOrderId] = useState<string>('');
   const ordersPerPage = 5;
 
-  // Mock data - replace with real API calls
+  // Fetch real orders from API
   useEffect(() => {
     const fetchOrders = async () => {
       setLoading(true);
       
-      // Simulate API call
-      setTimeout(() => {
-        const mockOrders: Order[] = [
-          {
-            id: '1',
-            orderNumber: 'ORD-2024-001',
-            date: '2024-01-15T10:30:00Z',
-            status: 'delivered',
-            total: 459.98,
-            subtotal: 399.98,
-            shipping: 15.00,
-            tax: 45.00,
-            trackingNumber: 'TRK123456789',
-            estimatedDelivery: '2024-01-18T00:00:00Z',
-            paymentMethod: 'Credit Card ****1234',
-            orderProgress: {
-              ordered: true,
-              confirmed: true,
-              shipped: true,
-              delivered: true
-            },
-            items: [
-              {
-                id: '1',
-                name: 'Advanced AI Robot Kit',
-                image: '/api/placeholder/100/100',
-                price: 299.99,
-                quantity: 1,
-                sku: 'AIR-001'
-              },
-              {
-                id: '2',
-                name: 'Smart Sensor Module',
-                image: '/api/placeholder/100/100',
-                price: 99.99,
-                quantity: 1,
-                sku: 'SSM-002'
-              }
-            ],
-            shippingAddress: {
-              name: 'John Doe',
-              address: '123 Tech Street',
-              city: 'New York',
-              zipCode: '10001',
-              country: 'USA'
-            }
+      try {
+        const response = await ordersAPI.getOrders();
+        console.log('Orders API response:', response.data); // Debug log
+        
+        // Handle the response - it might be paginated
+        const ordersData = response.data?.data?.data || response.data?.data || response.data || [];
+        console.log('Orders data:', ordersData); // Debug log
+        
+        // Transform the data to match frontend interface if needed
+        const transformedOrders = Array.isArray(ordersData) ? ordersData.map((order: any) => ({
+          id: order.id?.toString() || order.order_number,
+          orderNumber: order.order_number,
+          date: order.created_at,
+          status: order.status,
+          total: parseFloat(order.total_amount || 0),
+          subtotal: parseFloat(order.subtotal || 0),
+          shipping: parseFloat(order.shipping_amount || 0),
+          tax: parseFloat(order.tax_amount || 0),
+          trackingNumber: order.tracking_number || undefined,
+          estimatedDelivery: order.estimated_delivery || undefined,
+          paymentMethod: order.payment_method,
+          orderProgress: {
+            ordered: true,
+            confirmed: order.status !== 'pending',
+            shipped: ['shipped', 'delivered'].includes(order.status),
+            delivered: order.status === 'delivered'
           },
-          {
-            id: '2',
-            orderNumber: 'ORD-2024-002',
-            date: '2024-01-20T14:15:00Z',
-            status: 'shipped',
-            total: 189.99,
-            subtotal: 159.99,
-            shipping: 15.00,
-            tax: 15.00,
-            trackingNumber: 'TRK987654321',
-            estimatedDelivery: '2024-01-25T00:00:00Z',
-            paymentMethod: 'PayPal',
-            orderProgress: {
-              ordered: true,
-              confirmed: true,
-              shipped: true,
-              delivered: false
-            },
-            items: [
-              {
-                id: '3',
-                name: 'Robot Programming Guide',
-                image: '/api/placeholder/100/100',
-                price: 29.99,
-                quantity: 1,
-                sku: 'RPG-003'
-              },
-              {
-                id: '4',
-                name: 'Advanced Camera Module',
-                image: '/api/placeholder/100/100',
-                price: 129.99,
-                quantity: 1,
-                sku: 'ACM-004'
-              }
-            ],
-            shippingAddress: {
-              name: 'John Doe',
-              address: '123 Tech Street',
-              city: 'New York',
-              zipCode: '10001',
-              country: 'USA'
-            }
-          },
-          {
-            id: '3',
-            orderNumber: 'ORD-2024-003',
-            date: '2024-01-22T09:45:00Z',
-            status: 'processing',
-            total: 89.99,
-            subtotal: 79.99,
-            shipping: 10.00,
-            tax: 0.00,
-            paymentMethod: 'Credit Card ****5678',
-            orderProgress: {
-              ordered: true,
-              confirmed: true,
-              shipped: false,
-              delivered: false
-            },
-            items: [
-              {
-                id: '5',
-                name: 'Servo Motor Pack',
-                image: '/api/placeholder/100/100',
-                price: 79.99,
-                quantity: 1,
-                sku: 'SMP-005'
-              }
-            ],
-            shippingAddress: {
-              name: 'John Doe',
-              address: '123 Tech Street',
-              city: 'New York',
-              zipCode: '10001',
-              country: 'USA'
-            }
-          },
-          {
-            id: '4',
-            orderNumber: 'ORD-2024-004',
-            date: '2024-01-10T16:20:00Z',
-            status: 'cancelled',
-            total: 199.99,
-            subtotal: 179.99,
-            shipping: 20.00,
-            tax: 0.00,
-            paymentMethod: 'Credit Card ****9012',
-            orderProgress: {
-              ordered: true,
-              confirmed: false,
-              shipped: false,
-              delivered: false
-            },
-            items: [
-              {
-                id: '6',
-                name: 'Robotic Arm Assembly',
-                image: '/api/placeholder/100/100',
-                price: 179.99,
-                quantity: 1,
-                sku: 'RAA-006'
-              }
-            ],
-            shippingAddress: {
-              name: 'John Doe',
-              address: '123 Tech Street',
-              city: 'New York',
-              zipCode: '10001',
-              country: 'USA'
-            }
-          }
-        ];
+          items: order.order_items?.map((item: any) => ({
+            id: item.id?.toString(),
+            name: item.product_name,
+            image: item.product_image,
+            price: parseFloat(item.unit_price || 0),
+            quantity: parseInt(item.quantity || 1),
+            sku: item.product_sku
+          })) || [],
+          shippingAddress: order.shipping_address ? 
+            (typeof order.shipping_address === 'string' ? 
+              JSON.parse(order.shipping_address) : 
+              order.shipping_address) : {}
+        })) : [];
 
-        setOrders(mockOrders);
+        setOrders(transformedOrders);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        setOrders([]); // Set empty array on error
+      } finally {
         setLoading(false);
-      }, 1500);
+      }
     };
 
     fetchOrders();
@@ -370,9 +255,29 @@ const CustomerOrders: React.FC = () => {
     setAnchorEl(null);
   };
 
-  const handleDownloadInvoice = (order: Order) => {
-    // Implement invoice download
-    console.log('Download invoice for order:', order.orderNumber);
+  const handleDownloadInvoice = async (order: Order) => {
+    try {
+      console.log('Downloading invoice for order:', order.orderNumber);
+      
+      const response = await ordersAPI.downloadInvoice(order.orderNumber);
+      
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice-${order.orderNumber}.pdf`);
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      // Clean up the URL
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      alert('Failed to download invoice. Please try again later.');
+    }
     setAnchorEl(null);
   };
 

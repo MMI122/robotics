@@ -59,7 +59,7 @@ class OrderController extends Controller
             'shipping_address.state' => 'required|string|max:255',
             'shipping_address.postal_code' => 'required|string|max:20',
             'shipping_address.country' => 'required|string|max:255',
-            'payment_method' => 'required|in:card,bkash,nagad,rocket,cod',
+            'payment_method' => 'required|in:stripe,card,apple_pay,google_pay,paypal,bkash,nagad,rocket,cod',
             'billing_same_as_shipping' => 'boolean',
             'billing_address' => 'required_if:billing_same_as_shipping,false|array',
             'notes' => 'nullable|string|max:1000'
@@ -131,9 +131,12 @@ class OrderController extends Controller
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $item->product_id,
+                    'product_name' => $item->product->name,
+                    'product_sku' => $item->product->sku,
+                    'product_image' => $item->product->featured_image,
                     'quantity' => $item->quantity,
-                    'price' => $price,
-                    'total' => $price * $item->quantity
+                    'unit_price' => $price,
+                    'total_price' => $price * $item->quantity
                 ]);
 
                 // Update product stock
@@ -487,5 +490,129 @@ class OrderController extends Controller
         }
 
         return 'N/A';
+    }
+
+    /**
+     * Generate and download invoice for an order
+     */
+    public function downloadInvoice($orderNumber)
+    {
+        try {
+            // Find order by order number for the authenticated user
+            $order = Order::with(['orderItems.product', 'user'])
+                ->where('order_number', $orderNumber)
+                ->where('user_id', Auth::id())
+                ->first();
+
+            if (!$order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order not found'
+                ], 404);
+            }
+
+            // Generate simple HTML invoice
+            $html = $this->generateInvoiceHTML($order);
+
+            // For now, return HTML as text. In production, you'd use a PDF library like DomPDF
+            return response($html)
+                ->header('Content-Type', 'text/html')
+                ->header('Content-Disposition', 'attachment; filename="invoice-' . $orderNumber . '.html"');
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate invoice: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate invoice HTML
+     */
+    private function generateInvoiceHTML($order)
+    {
+        $shippingAddress = json_decode($order->shipping_address, true);
+        
+        $html = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Invoice - ' . $order->order_number . '</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .order-info { margin-bottom: 20px; }
+                .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                .table th { background-color: #f2f2f2; }
+                .totals { text-align: right; }
+                .total-row { font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>RoboticsShop</h1>
+                <h2>INVOICE</h2>
+            </div>
+            
+            <div class="order-info">
+                <p><strong>Order Number:</strong> ' . $order->order_number . '</p>
+                <p><strong>Order Date:</strong> ' . $order->created_at->format('F j, Y') . '</p>
+                <p><strong>Customer:</strong> ' . $order->user->name . '</p>
+                <p><strong>Email:</strong> ' . $order->user->email . '</p>
+                <p><strong>Payment Method:</strong> ' . ucfirst($order->payment_method) . '</p>
+            </div>
+
+            <div class="shipping-address">
+                <h3>Shipping Address</h3>
+                <p>' . ($shippingAddress['first_name'] ?? '') . ' ' . ($shippingAddress['last_name'] ?? '') . '</p>
+                <p>' . ($shippingAddress['address_line_1'] ?? '') . '</p>
+                <p>' . ($shippingAddress['city'] ?? '') . ', ' . ($shippingAddress['state'] ?? '') . ' ' . ($shippingAddress['postal_code'] ?? '') . '</p>
+                <p>' . ($shippingAddress['country'] ?? '') . '</p>
+            </div>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>SKU</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+        foreach ($order->orderItems as $item) {
+            $html .= '
+                    <tr>
+                        <td>' . $item->product_name . '</td>
+                        <td>' . $item->product_sku . '</td>
+                        <td>' . $item->quantity . '</td>
+                        <td>$' . number_format($item->unit_price, 2) . '</td>
+                        <td>$' . number_format($item->total_price, 2) . '</td>
+                    </tr>';
+        }
+
+        $html .= '
+                </tbody>
+            </table>
+
+            <div class="totals">
+                <p>Subtotal: $' . number_format($order->subtotal, 2) . '</p>
+                <p>Shipping: $' . number_format($order->shipping_amount, 2) . '</p>
+                <p>Tax: $' . number_format($order->tax_amount, 2) . '</p>
+                <p class="total-row">Total: $' . number_format($order->total_amount, 2) . '</p>
+            </div>
+
+            <div style="margin-top: 40px; text-align: center; color: #666;">
+                <p>Thank you for your business!</p>
+                <p>RoboticsShop - Your Electronics Partner</p>
+            </div>
+        </body>
+        </html>';
+
+        return $html;
     }
 }

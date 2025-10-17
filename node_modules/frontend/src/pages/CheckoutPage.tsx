@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -48,6 +48,10 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAppSelector, useAppDispatch } from '../hooks/redux';
+import { fetchCart, updateCartItem, removeFromCart } from '../store/slices/cartSlice';
+import { createOrder } from '../store/slices/ordersSlice';
+import { getProductImageUrl } from '../utils/imageUtils';
 
 interface CartItem {
   id: number;
@@ -73,34 +77,36 @@ interface ShippingAddress {
 const CheckoutPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { items: cartItemsData, loading, totalPrice, totalItems, error } = useAppSelector((state) => state.cart);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   
   const [activeStep, setActiveStep] = useState(0);
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: 1,
-      name: 'Arduino Uno R3 Development Board',
-      image: '/api/placeholder/80/80',
-      price: 25.99,
-      quantity: 2,
-      inStock: true,
-    },
-    {
-      id: 2,
-      name: 'Raspberry Pi 4 Model B 4GB',
-      image: '/api/placeholder/80/80',
-      price: 75.00,
-      quantity: 1,
-      inStock: true,
-    },
-    {
-      id: 3,
-      name: 'ESP32 DevKit V1',
-      image: '/api/placeholder/80/80',
-      price: 12.50,
-      quantity: 3,
-      inStock: true,
-    },
-  ]);
+
+  // Transform Redux cart items to match the expected format
+  const cartItems = cartItemsData.map(item => ({
+    id: item.id,
+    name: item.product?.name || 'Unknown Product',
+    image: getProductImageUrl(item.product?.featured_image || ''),
+    price: parseFloat(String(item.product?.sale_price || item.product?.price || 0)) || 0,
+    quantity: parseInt(String(item.quantity)) || 1,
+    inStock: item.product?.in_stock || false,
+  }));
+
+  useEffect(() => {
+    if (isAuthenticated && cartItemsData.length === 0) {
+      dispatch(fetchCart());
+    }
+  }, [dispatch, cartItemsData.length, isAuthenticated]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', { 
+        state: { from: '/checkout', message: 'Please login to proceed with checkout' }
+      });
+    }
+  }, [isAuthenticated, navigate]);
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: '',
@@ -119,6 +125,7 @@ const CheckoutPage: React.FC = () => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState<any>(null);
 
   const steps = ['Cart Review', 'Shipping', 'Payment', 'Confirmation'];
 
@@ -130,13 +137,11 @@ const CheckoutPage: React.FC = () => {
 
   const updateQuantity = (id: number, newQuantity: number) => {
     if (newQuantity < 1) return;
-    setCartItems(prev => prev.map(item => 
-      item.id === id ? { ...item, quantity: newQuantity } : item
-    ));
+    dispatch(updateCartItem({ id, quantity: newQuantity }));
   };
 
   const removeItem = (id: number) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
+    dispatch(removeFromCart(id));
   };
 
   const handleNext = () => {
@@ -155,6 +160,51 @@ const CheckoutPage: React.FC = () => {
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  const createOrderHandler = async () => {
+    try {
+      const orderData = {
+        shipping_address: {
+          first_name: shippingAddress.firstName,
+          last_name: shippingAddress.lastName,
+          email: shippingAddress.email,
+          phone: shippingAddress.phone,
+          address_line_1: shippingAddress.address,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          postal_code: shippingAddress.zipCode,
+          country: shippingAddress.country,
+        },
+        billing_address: {
+          first_name: shippingAddress.firstName,
+          last_name: shippingAddress.lastName,
+          email: shippingAddress.email,
+          phone: shippingAddress.phone,
+          address_line_1: shippingAddress.address,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          postal_code: shippingAddress.zipCode,
+          country: shippingAddress.country,
+        },
+        payment_method: paymentMethod === 'apple' ? 'apple_pay' : 
+                       paymentMethod === 'google' ? 'google_pay' : 
+                       paymentMethod,
+        billing_same_as_shipping: sameAsBilling,
+      };
+
+      const resultAction = await dispatch(createOrder(orderData));
+      if (createOrder.fulfilled.match(resultAction)) {
+        setCreatedOrder(resultAction.payload);
+        handleNext(); // Advance to confirmation step
+        return resultAction.payload;
+      } else {
+        throw new Error(resultAction.payload as string);
+      }
+    } catch (error) {
+      console.error('Order creation failed:', error);
+      throw error;
+    }
   };
 
   return (
@@ -191,6 +241,62 @@ const CheckoutPage: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Loading State */}
+        {loading && (
+          <Card sx={{ borderRadius: '16px', textAlign: 'center', py: 6 }}>
+            <CardContent>
+              <Typography>Loading your cart...</Typography>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <Card sx={{ borderRadius: '16px', textAlign: 'center', py: 6 }}>
+            <CardContent>
+              <Alert severity="error" sx={{ mb: 3 }}>
+                Failed to load cart: {error}
+              </Alert>
+              <Button 
+                variant="contained" 
+                onClick={() => dispatch(fetchCart())}
+                sx={{ borderRadius: '12px', mr: 2 }}
+              >
+                Retry
+              </Button>
+              <Button 
+                variant="outlined" 
+                onClick={() => navigate('/products')}
+                sx={{ borderRadius: '12px' }}
+              >
+                Continue Shopping
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Empty Cart State */}
+        {!loading && !error && cartItems.length === 0 && (
+          <Card sx={{ borderRadius: '16px', textAlign: 'center', py: 6 }}>
+            <CardContent>
+              <ShoppingCart sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" gutterBottom>Your cart is empty</Typography>
+              <Typography color="text.secondary" sx={{ mb: 3 }}>
+                Add some products to your cart to continue with checkout
+              </Typography>
+              <Button 
+                variant="contained" 
+                onClick={() => navigate('/products')}
+                sx={{ borderRadius: '12px' }}
+              >
+                Continue Shopping
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Main Content - Only show if cart has items and no error */}
+        {!loading && !error && cartItems.length > 0 && (
         <Grid container spacing={4}>
           {/* Main Content */}
           <Grid item xs={12} lg={8}>
@@ -594,9 +700,16 @@ const CheckoutPage: React.FC = () => {
                             <Box sx={{ mt: 3, pl: 4 }}>
                               <PayPalPayment
                                 amount={cartItems.reduce((total, item) => total + item.price * item.quantity, 0)}
-                                onSuccess={(details: any) => {
+                                onSuccess={async (details: any) => {
                                   console.log('PayPal payment successful:', details);
-                                  handleNext(); // Proceed to confirmation step
+                                  try {
+                                    const order = await createOrderHandler();
+                                    console.log('Order created:', order);
+                                    handleNext(); // Proceed to confirmation step
+                                  } catch (error) {
+                                    console.error('Failed to create order:', error);
+                                    // Handle error - maybe show an error message
+                                  }
                                 }}
                                 onError={(error: any) => {
                                   console.error('PayPal payment error:', error);
@@ -674,7 +787,7 @@ const CheckoutPage: React.FC = () => {
                       </Button>
                       <Button
                         variant="contained"
-                        onClick={handleNext}
+                        onClick={createOrderHandler}
                         sx={{
                           borderRadius: '12px',
                           textTransform: 'none',
@@ -720,7 +833,7 @@ const CheckoutPage: React.FC = () => {
                       Order Confirmed!
                     </Typography>
                     <Typography variant="h6" sx={{ mb: 1 }}>
-                      Order #RB-2024-001234
+                      Order #{createdOrder?.order_number || 'Processing...'}
                     </Typography>
                     <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 400, mx: 'auto' }}>
                       Thank you for your purchase! We've sent a confirmation email to {shippingAddress.email}
@@ -899,6 +1012,7 @@ const CheckoutPage: React.FC = () => {
             </Card>
           </Grid>
         </Grid>
+        )}
       </Container>
       </Box>
     </PayPalScriptProvider>

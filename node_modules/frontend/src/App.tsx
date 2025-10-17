@@ -24,6 +24,7 @@ import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import CategoryPage from './pages/CategoryPage';
+import CategoriesPage from './pages/CategoriesPage';
 import SearchPage from './pages/SearchPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
@@ -178,6 +179,7 @@ const AppContent: React.FC = () => {
               <Route index element={<HomePage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="products/:slug" element={<ProductDetailPage />} />
+              <Route path="categories" element={<CategoriesPage />} />
               <Route path="category/:slug" element={<CategoryPage />} />
               <Route path="search" element={<SearchPage />} />
               <Route path="cart" element={<CartPage />} />

@@ -100,7 +100,17 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ category }) => {
             {category.name}
           </Typography>
           
-          {/* Product count temporarily disabled until backend provides this data */}
+          {category.products_count !== undefined && (
+            <Typography
+              variant="body2"
+              sx={{
+                opacity: 0.9,
+                textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+              }}
+            >
+              {category.products_count} Products
+            </Typography>
+          )}
         </Box>
       </Box>
 

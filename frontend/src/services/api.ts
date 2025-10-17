@@ -119,7 +119,7 @@ export const productsAPI = {
 // Categories API
 export const categoriesAPI = {
   getCategories: (): Promise<AxiosResponse<ApiResponse<Category[]>>> =>
-    api.get('/categories'),
+    api.get('/categories', { params: { with_counts: true } }),
   
   getCategory: (slug: string): Promise<AxiosResponse<ApiResponse<Category>>> =>
     api.get(`/categories/${slug}`),
@@ -178,6 +178,9 @@ export const ordersAPI = {
   
   cancelOrder: (id: number): Promise<AxiosResponse<ApiResponse>> =>
     api.put(`/orders/${id}/cancel`),
+  
+  downloadInvoice: (orderNumber: string): Promise<AxiosResponse<Blob>> =>
+    api.get(`/orders/${orderNumber}/invoice`, { responseType: 'blob' }),
   
   // Admin only
   getAdminOrders: (filters?: any): Promise<AxiosResponse<ApiResponse<PaginatedResponse<Order>>>> =>

@@ -27,6 +27,7 @@ export interface Category {
   is_active: boolean;
   sort_order: number;
   parent_id?: number;
+  products_count?: number;
   created_at: string;
   updated_at: string;
 }
