@@ -11,6 +11,7 @@ use App\Http\Controllers\API\ReviewController;
 use App\Http\Controllers\API\WishlistController;
 use App\Http\Controllers\API\SupportController;
 use App\Http\Controllers\API\PayPalController;
+use App\Http\Controllers\API\UserController;
 
 // Public routes
 Route::post('register', [AuthController::class, 'register']);
@@ -117,8 +118,10 @@ Route::get('admin/analytics/dashboard', function () {
     }
 });
 
+// Test admin endpoints (temporary - no auth required)
 Route::get('admin/orders', [OrderController::class, 'adminIndex']);
 Route::get('admin/products', [ProductController::class, 'adminIndex']);
+Route::get('admin/customers', [UserController::class, 'adminIndex']);
 
 // Admin routes
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
@@ -146,6 +149,13 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('support', [SupportController::class, 'adminIndex']);
     Route::put('support/{support}/reply', [SupportController::class, 'adminReply']);
     Route::put('support/{support}/status', [SupportController::class, 'updateStatus']);
+    
+    // Customer management
+    Route::get('customers', [UserController::class, 'adminIndex']);
+    Route::get('customers/{user}', [UserController::class, 'show']);
+    Route::put('customers/{user}', [UserController::class, 'update']);
+    Route::put('customers/{user}/tier', [UserController::class, 'updateTier']);
+    Route::put('customers/{user}/status', [UserController::class, 'updateStatus']);
 });
 
 // Public PayPal routes (for redirects and webhooks)

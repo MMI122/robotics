@@ -29,6 +29,7 @@ class User extends Authenticatable
         'country',
         'postal_code',
         'role',
+        'tier',
         'avatar',
         'is_active',
         'last_login_at',

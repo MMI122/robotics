@@ -69,6 +69,7 @@ import {
 import { styled } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { customersAPI } from '../../services/api';
 
 const StatsCard = styled(Card)(({ theme }) => ({
   background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
@@ -100,32 +101,15 @@ interface Customer {
   email: string;
   phone?: string;
   avatar?: string;
-  isActive: boolean;
-  isVerified: boolean;
-  isVip: boolean;
-  registrationDate: string;
-  lastLoginDate: string;
-  totalOrders: number;
-  totalSpent: number;
-  averageOrderValue: number;
-  address: {
-    street: string;
-    city: string;
-    state: string;
-    country: string;
-    postalCode: string;
-  };
-  preferences: {
-    newsletter: boolean;
-    promotions: boolean;
-    smsNotifications: boolean;
-  };
-  recentOrders: {
-    id: string;
-    date: string;
-    total: number;
-    status: string;
-  }[];
+  is_active: boolean;
+  is_verified: boolean;
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'vip';
+  joined_date: string;
+  last_login?: string;
+  total_orders: number;
+  total_spent: number;
+  avg_order_value: number;
+  last_order_date?: string;
 }
 
 const AdminCustomers: React.FC = () => {
@@ -145,165 +129,94 @@ const AdminCustomers: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Mock data
+  // Fetch customers data
   useEffect(() => {
-    const mockCustomers: Customer[] = [
-      {
-        id: 1,
-        name: 'John Doe',
-        email: 'john@example.com',
-        phone: '+1-555-0123',
-        avatar: '/api/placeholder/40/40',
-        isActive: true,
-        isVerified: true,
-        isVip: true,
-        registrationDate: '2023-06-15T10:30:00Z',
-        lastLoginDate: '2024-01-20T15:45:00Z',
-        totalOrders: 12,
-        totalSpent: 2485.50,
-        averageOrderValue: 207.13,
-        address: {
-          street: '123 Main St',
-          city: 'New York',
-          state: 'NY',
-          country: 'USA',
-          postalCode: '10001'
-        },
-        preferences: {
-          newsletter: true,
-          promotions: true,
-          smsNotifications: false
-        },
-        recentOrders: [
-          { id: 'ORD-001', date: '2024-01-20', total: 299.99, status: 'delivered' },
-          { id: 'ORD-045', date: '2024-01-15', total: 149.50, status: 'shipped' }
-        ]
-      },
-      {
-        id: 2,
-        name: 'Jane Smith',
-        email: 'jane@example.com',
-        phone: '+1-555-0456',
-        isActive: true,
-        isVerified: true,
-        isVip: false,
-        registrationDate: '2023-08-22T14:20:00Z',
-        lastLoginDate: '2024-01-19T09:30:00Z',
-        totalOrders: 8,
-        totalSpent: 1240.75,
-        averageOrderValue: 155.09,
-        address: {
-          street: '456 Oak Ave',
-          city: 'Los Angeles',
-          state: 'CA',
-          country: 'USA',
-          postalCode: '90210'
-        },
-        preferences: {
-          newsletter: true,
-          promotions: false,
-          smsNotifications: true
-        },
-        recentOrders: [
-          { id: 'ORD-002', date: '2024-01-19', total: 149.50, status: 'processing' }
-        ]
-      },
-      {
-        id: 3,
-        name: 'Mike Johnson',
-        email: 'mike@example.com',
-        phone: '+1-555-0789',
-        isActive: false,
-        isVerified: false,
-        isVip: false,
-        registrationDate: '2023-12-10T08:15:00Z',
-        lastLoginDate: '2023-12-25T16:20:00Z',
-        totalOrders: 2,
-        totalSpent: 189.98,
-        averageOrderValue: 94.99,
-        address: {
-          street: '789 Pine St',
-          city: 'Chicago',
-          state: 'IL',
-          country: 'USA',
-          postalCode: '60601'
-        },
-        preferences: {
-          newsletter: false,
-          promotions: false,
-          smsNotifications: false
-        },
-        recentOrders: [
-          { id: 'ORD-003', date: '2023-12-20', total: 89.99, status: 'delivered' }
-        ]
-      },
-      {
-        id: 4,
-        name: 'Sarah Wilson',
-        email: 'sarah@example.com',
-        phone: '+1-555-0321',
-        isActive: true,
-        isVerified: true,
-        isVip: true,
-        registrationDate: '2023-03-05T11:45:00Z',
-        lastLoginDate: '2024-01-18T12:10:00Z',
-        totalOrders: 25,
-        totalSpent: 4750.25,
-        averageOrderValue: 190.01,
-        address: {
-          street: '321 Elm St',
-          city: 'Miami',
-          state: 'FL',
-          country: 'USA',
-          postalCode: '33101'
-        },
-        preferences: {
-          newsletter: true,
-          promotions: true,
-          smsNotifications: true
-        },
-        recentOrders: [
-          { id: 'ORD-004', date: '2024-01-18', total: 234.75, status: 'delivered' },
-          { id: 'ORD-038', date: '2024-01-10', total: 456.20, status: 'delivered' }
-        ]
-      },
-      {
-        id: 5,
-        name: 'David Brown',
-        email: 'david@example.com',
-        phone: '+1-555-0654',
-        isActive: true,
-        isVerified: false,
-        isVip: false,
-        registrationDate: '2024-01-01T09:00:00Z',
-        lastLoginDate: '2024-01-15T14:30:00Z',
-        totalOrders: 1,
-        totalSpent: 45.99,
-        averageOrderValue: 45.99,
-        address: {
-          street: '654 Maple Ave',
-          city: 'Seattle',
-          state: 'WA',
-          country: 'USA',
-          postalCode: '98101'
-        },
-        preferences: {
-          newsletter: true,
-          promotions: true,
-          smsNotifications: false
-        },
-        recentOrders: [
-          { id: 'ORD-005', date: '2024-01-14', total: 45.99, status: 'cancelled' }
-        ]
-      }
-    ];
-
-    setTimeout(() => {
-      setCustomers(mockCustomers);
-      setFilteredCustomers(mockCustomers);
-      setLoading(false);
-    }, 1000);
+    fetchCustomers();
   }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const response = await customersAPI.getAll({
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        search: searchQuery || undefined,
+      });
+      
+      const customersData = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+      setCustomers(customersData as Customer[]);
+      setFilteredCustomers(customersData as Customer[]);
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+      // Set empty array on error
+      setCustomers([]);
+      setFilteredCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchCustomers();
+  };
+
+  const handleTierUpdate = async (customerId: number, newTier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'vip') => {
+    try {
+      await customersAPI.updateTier(customerId, newTier);
+      
+      // Update local state
+      const updatedCustomers = customers.map(customer => 
+        customer.id === customerId 
+          ? { ...customer, tier: newTier }
+          : customer
+      );
+      setCustomers(updatedCustomers);
+      setFilteredCustomers(updatedCustomers);
+      setMenuAnchor(null);
+      
+    } catch (error) {
+      console.error('Failed to update customer tier:', error);
+    }
+  };
+
+  const handleStatusUpdate = async (customerId: number, isActive: boolean) => {
+    try {
+      await customersAPI.updateStatus(customerId, isActive);
+      
+      // Update local state
+      const updatedCustomers = customers.map(customer => 
+        customer.id === customerId 
+          ? { ...customer, is_active: isActive }
+          : customer
+      );
+      setCustomers(updatedCustomers);
+      setFilteredCustomers(updatedCustomers);
+      
+    } catch (error) {
+      console.error('Failed to update customer status:', error);
+    }
+  };
+
+  const handleToggleStatus = (customerId: number) => {
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      handleStatusUpdate(customerId, !customer.is_active);
+    }
+    setMenuAnchor(null);
+  };
+
+  const handleToggleVIP = (customerId: number) => {
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      const newTier = customer.tier === 'platinum' ? 'bronze' : 'platinum';
+      handleTierUpdate(customerId, newTier);
+    }
+    setMenuAnchor(null);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setSelectedCustomer(null);
+  };
 
   // Filter customers
   useEffect(() => {
@@ -319,13 +232,13 @@ const AdminCustomers: React.FC = () => {
 
     if (statusFilter !== 'all') {
       filtered = filtered.filter(customer => 
-        statusFilter === 'active' ? customer.isActive : !customer.isActive
+        statusFilter === 'active' ? customer.is_active : !customer.is_active
       );
     }
 
     if (vipFilter !== 'all') {
       filtered = filtered.filter(customer => 
-        vipFilter === 'vip' ? customer.isVip : !customer.isVip
+        vipFilter === 'vip' ? customer.tier === 'vip' : customer.tier !== 'vip'
       );
     }
 
@@ -343,21 +256,21 @@ const AdminCustomers: React.FC = () => {
     },
     {
       title: 'Active Customers',
-      value: customers.filter(c => c.isActive).length,
+      value: customers.filter(c => c.is_active).length,
       icon: <ActiveIcon fontSize="large" />,
       color: 'success' as const,
       change: '+8%'
     },
     {
       title: 'VIP Customers',
-      value: customers.filter(c => c.isVip).length,
+      value: customers.filter(c => c.tier === 'vip').length,
       icon: <StarIcon fontSize="large" />,
       color: 'warning' as const,
       change: '+15%'
     },
     {
       title: 'Total Revenue',
-      value: `$${customers.reduce((sum, c) => sum + c.totalSpent, 0).toFixed(2)}`,
+      value: `$${customers.reduce((sum, c) => sum + c.total_spent, 0).toFixed(2)}`,
       icon: <MoneyIcon fontSize="large" />,
       color: 'secondary' as const,
       change: '+22%'
@@ -369,38 +282,21 @@ const AdminCustomers: React.FC = () => {
     setSelectedCustomer(customer);
   };
 
-  const handleMenuClose = () => {
-    setMenuAnchor(null);
-    setSelectedCustomer(null);
-  };
 
-  const handleToggleStatus = (customerId: number) => {
-    setCustomers(prev => prev.map(customer => 
-      customer.id === customerId 
-        ? { ...customer, isActive: !customer.isActive }
-        : customer
-    ));
-    handleMenuClose();
-  };
-
-  const handleToggleVIP = (customerId: number) => {
-    setCustomers(prev => prev.map(customer => 
-      customer.id === customerId 
-        ? { ...customer, isVip: !customer.isVip }
-        : customer
-    ));
-    handleMenuClose();
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const getCustomerTier = (totalSpent: number) => {
-    if (totalSpent >= 2000) return { label: 'Platinum', color: 'primary' as const };
-    if (totalSpent >= 1000) return { label: 'Gold', color: 'warning' as const };
-    if (totalSpent >= 500) return { label: 'Silver', color: 'default' as const };
-    return { label: 'Bronze', color: 'default' as const };
+  const getTierInfo = (tier: string) => {
+    switch (tier) {
+      case 'vip': return { label: 'VIP', color: 'error' as const };
+      case 'platinum': return { label: 'Platinum', color: 'primary' as const };
+      case 'gold': return { label: 'Gold', color: 'warning' as const };
+      case 'silver': return { label: 'Silver', color: 'default' as const };
+      case 'bronze': return { label: 'Bronze', color: 'default' as const };
+      default: return { label: 'Bronze', color: 'default' as const };
+    }
   };
 
   if (loading) {
@@ -427,7 +323,7 @@ const AdminCustomers: React.FC = () => {
                 <Button variant="outlined" startIcon={<DownloadIcon />}>
                   Export
                 </Button>
-                <Button variant="outlined" startIcon={<RefreshIcon />}>
+                <Button variant="outlined" startIcon={<RefreshIcon />} onClick={handleRefresh}>
                   Refresh
                 </Button>
                 <Button variant="contained" startIcon={<AddPersonIcon />}>
@@ -535,7 +431,7 @@ const AdminCustomers: React.FC = () => {
                   {filteredCustomers
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((customer) => {
-                      const tier = getCustomerTier(customer.totalSpent);
+                      const tier = getTierInfo(customer.tier);
                       return (
                         <TableRow key={customer.id} hover>
                           <TableCell>
@@ -544,7 +440,7 @@ const AdminCustomers: React.FC = () => {
                                 overlap="circular"
                                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                                 badgeContent={
-                                  customer.isVip ? (
+                                  customer.tier === 'vip' ? (
                                     <StarIcon sx={{ color: 'gold', fontSize: 16 }} />
                                   ) : null
                                 }
@@ -561,7 +457,7 @@ const AdminCustomers: React.FC = () => {
                                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                                     {customer.name}
                                   </Typography>
-                                  {customer.isVerified && (
+                                  {customer.is_verified && (
                                     <VerifiedIcon sx={{ fontSize: 16, color: 'primary.main' }} />
                                   )}
                                 </Box>
@@ -573,10 +469,10 @@ const AdminCustomers: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <Chip
-                              label={customer.isActive ? 'Active' : 'Inactive'}
+                              label={customer.is_active ? 'Active' : 'Inactive'}
                               size="small"
-                              color={customer.isActive ? 'success' : 'error'}
-                              icon={customer.isActive ? <ActiveIcon /> : <BlockIcon />}
+                              color={customer.is_active ? 'success' : 'error'}
+                              icon={customer.is_active ? <ActiveIcon /> : <BlockIcon />}
                             />
                           </TableCell>
                           <TableCell>
@@ -590,23 +486,23 @@ const AdminCustomers: React.FC = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <OrdersIcon fontSize="small" color="primary" />
                               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                {customer.totalOrders}
+                                {customer.total_orders}
                               </Typography>
                             </Box>
                           </TableCell>
                           <TableCell>
                             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                              ${customer.totalSpent.toFixed(2)}
+                              ${customer.total_spent.toFixed(2)}
                             </Typography>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2">
-                              ${customer.averageOrderValue.toFixed(2)}
+                              ${customer.avg_order_value.toFixed(2)}
                             </Typography>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2">
-                              {formatDate(customer.registrationDate)}
+                              {formatDate(customer.joined_date)}
                             </Typography>
                           </TableCell>
                           <TableCell align="center">
@@ -660,13 +556,29 @@ const AdminCustomers: React.FC = () => {
               Send Email
             </MenuItem>
             <Divider />
-            <MenuItem onClick={() => handleToggleVIP(selectedCustomer?.id || 0)}>
+            <MenuItem onClick={() => handleTierUpdate(selectedCustomer?.id || 0, 'bronze')}>
               <StarIcon sx={{ mr: 1 }} />
-              {selectedCustomer?.isVip ? 'Remove VIP' : 'Make VIP'}
+              Set Bronze Tier
+            </MenuItem>
+            <MenuItem onClick={() => handleTierUpdate(selectedCustomer?.id || 0, 'silver')}>
+              <StarIcon sx={{ mr: 1 }} />
+              Set Silver Tier
+            </MenuItem>
+            <MenuItem onClick={() => handleTierUpdate(selectedCustomer?.id || 0, 'gold')}>
+              <StarIcon sx={{ mr: 1 }} />
+              Set Gold Tier
+            </MenuItem>
+            <MenuItem onClick={() => handleTierUpdate(selectedCustomer?.id || 0, 'platinum')}>
+              <StarIcon sx={{ mr: 1 }} />
+              Set Platinum Tier
+            </MenuItem>
+            <MenuItem onClick={() => handleTierUpdate(selectedCustomer?.id || 0, 'vip')}>
+              <StarIcon sx={{ mr: 1, color: 'red' }} />
+              Set VIP Tier
             </MenuItem>
             <MenuItem onClick={() => handleToggleStatus(selectedCustomer?.id || 0)}>
-              {selectedCustomer?.isActive ? <BlockIcon sx={{ mr: 1 }} /> : <ActiveIcon sx={{ mr: 1 }} />}
-              {selectedCustomer?.isActive ? 'Deactivate' : 'Activate'}
+              {selectedCustomer?.is_active ? <BlockIcon sx={{ mr: 1 }} /> : <ActiveIcon sx={{ mr: 1 }} />}
+              {selectedCustomer?.is_active ? 'Deactivate' : 'Activate'}
             </MenuItem>
           </Menu>
 
@@ -697,7 +609,7 @@ const AdminCustomers: React.FC = () => {
                     <Tab label="Overview" />
                     <Tab label="Orders" />
                     <Tab label="Address" />
-                    <Tab label="Preferences" />
+                    <Tab label="Settings" />
                   </Tabs>
 
                   {/* Overview Tab */}
@@ -709,17 +621,17 @@ const AdminCustomers: React.FC = () => {
                           <Typography>Name: {selectedCustomer.name}</Typography>
                           <Typography>Email: {selectedCustomer.email}</Typography>
                           <Typography>Phone: {selectedCustomer.phone || 'Not provided'}</Typography>
-                          <Typography>Status: {selectedCustomer.isActive ? 'Active' : 'Inactive'}</Typography>
-                          <Typography>Verified: {selectedCustomer.isVerified ? 'Yes' : 'No'}</Typography>
-                          <Typography>VIP: {selectedCustomer.isVip ? 'Yes' : 'No'}</Typography>
+                          <Typography>Status: {selectedCustomer.is_active ? 'Active' : 'Inactive'}</Typography>
+                          <Typography>Verified: {selectedCustomer.is_verified ? 'Yes' : 'No'}</Typography>
+                          <Typography>Tier: {getTierInfo(selectedCustomer.tier).label}</Typography>
                         </Grid>
                         <Grid item xs={12} md={6}>
                           <Typography variant="subtitle2" gutterBottom>Statistics</Typography>
-                          <Typography>Total Orders: {selectedCustomer.totalOrders}</Typography>
-                          <Typography>Total Spent: ${selectedCustomer.totalSpent.toFixed(2)}</Typography>
-                          <Typography>Average Order: ${selectedCustomer.averageOrderValue.toFixed(2)}</Typography>
-                          <Typography>Joined: {formatDate(selectedCustomer.registrationDate)}</Typography>
-                          <Typography>Last Login: {formatDate(selectedCustomer.lastLoginDate)}</Typography>
+                          <Typography>Total Orders: {selectedCustomer.total_orders}</Typography>
+                          <Typography>Total Spent: ${selectedCustomer.total_spent.toFixed(2)}</Typography>
+                          <Typography>Average Order: ${selectedCustomer.avg_order_value.toFixed(2)}</Typography>
+                          <Typography>Joined: {formatDate(selectedCustomer.joined_date)}</Typography>
+                          <Typography>Last Login: {selectedCustomer.last_login ? formatDate(selectedCustomer.last_login) : 'Never'}</Typography>
                         </Grid>
                       </Grid>
                     </Box>
@@ -728,54 +640,29 @@ const AdminCustomers: React.FC = () => {
                   {/* Orders Tab */}
                   {activeTab === 1 && (
                     <Box sx={{ py: 3 }}>
-                      <Typography variant="subtitle2" gutterBottom>Recent Orders</Typography>
-                      <List>
-                        {selectedCustomer.recentOrders.map((order) => (
-                          <ListItem key={order.id}>
-                            <ListItemText
-                              primary={`Order ${order.id}`}
-                              secondary={`${order.date} • ${order.status}`}
-                            />
-                            <Typography variant="subtitle2">
-                              ${order.total.toFixed(2)}
-                            </Typography>
-                          </ListItem>
-                        ))}
-                      </List>
+                      <Typography variant="subtitle2" gutterBottom>Order Information</Typography>
+                      <Typography>Total Orders: {selectedCustomer.total_orders}</Typography>
+                      <Typography>Total Spent: ${selectedCustomer.total_spent.toFixed(2)}</Typography>
+                      <Typography>Average Order Value: ${selectedCustomer.avg_order_value.toFixed(2)}</Typography>
                     </Box>
                   )}
 
                   {/* Address Tab */}
                   {activeTab === 2 && (
                     <Box sx={{ py: 3 }}>
-                      <Typography variant="subtitle2" gutterBottom>Shipping Address</Typography>
-                      <Typography>{selectedCustomer.address.street}</Typography>
-                      <Typography>
-                        {selectedCustomer.address.city}, {selectedCustomer.address.state} {selectedCustomer.address.postalCode}
-                      </Typography>
-                      <Typography>{selectedCustomer.address.country}</Typography>
+                      <Typography variant="subtitle2" gutterBottom>Contact Information</Typography>
+                      <Typography>Email: {selectedCustomer.email}</Typography>
+                      <Typography>Phone: {selectedCustomer.phone || 'Not provided'}</Typography>
                     </Box>
                   )}
 
-                  {/* Preferences Tab */}
+                  {/* Settings Tab */}
                   {activeTab === 3 && (
                     <Box sx={{ py: 3 }}>
-                      <Typography variant="subtitle2" gutterBottom>Communication Preferences</Typography>
-                      <FormControlLabel
-                        control={<Switch checked={selectedCustomer.preferences.newsletter} />}
-                        label="Newsletter Subscription"
-                        disabled
-                      />
-                      <FormControlLabel
-                        control={<Switch checked={selectedCustomer.preferences.promotions} />}
-                        label="Promotional Emails"
-                        disabled
-                      />
-                      <FormControlLabel
-                        control={<Switch checked={selectedCustomer.preferences.smsNotifications} />}
-                        label="SMS Notifications"
-                        disabled
-                      />
+                      <Typography variant="subtitle2" gutterBottom>Account Settings</Typography>
+                      <Typography>Account Status: {selectedCustomer.is_active ? 'Active' : 'Inactive'}</Typography>
+                      <Typography>Email Verified: {selectedCustomer.is_verified ? 'Yes' : 'No'}</Typography>
+                      <Typography>Customer Tier: {getTierInfo(selectedCustomer.tier).label}</Typography>
                     </Box>
                   )}
                 </Box>

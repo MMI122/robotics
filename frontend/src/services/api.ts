@@ -241,6 +241,46 @@ export const analyticsAPI = {
     api.get('/admin/analytics/dashboard'),
 };
 
+// Customers API (Admin only)
+export const customersAPI = {
+  getAll: (params?: {
+    status?: string;
+    tier?: string;
+    search?: string;
+  }): Promise<AxiosResponse<ApiResponse<{
+    data: any[];
+    stats: {
+      total_customers: number;
+      active_customers: number;
+      vip_customers: number;
+      total_revenue: number;
+    };
+  }>>> =>
+    api.get('/admin/customers', { params }),
+  
+  getById: (id: number): Promise<AxiosResponse<ApiResponse<any>>> =>
+    api.get(`/admin/customers/${id}`),
+  
+  update: (id: number, data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    is_active?: boolean;
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postal_code?: string;
+  }): Promise<AxiosResponse<ApiResponse<any>>> =>
+    api.put(`/admin/customers/${id}`, data),
+  
+  updateTier: (id: number, tier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'vip'): Promise<AxiosResponse<ApiResponse<any>>> =>
+    api.put(`/admin/customers/${id}/tier`, { tier }),
+  
+  updateStatus: (id: number, is_active: boolean): Promise<AxiosResponse<ApiResponse<any>>> =>
+    api.put(`/admin/customers/${id}/status`, { is_active }),
+};
+
 // PayPal API
 export const paypalAPI = {
   createPayment: (orderId: number): Promise<AxiosResponse<ApiResponse<{
