@@ -13,12 +13,14 @@ RUN apk add --no-cache \
     oniguruma oniguruma-dev \
     icu-dev \
     mariadb-connector-c-dev \
+    postgresql-dev \
     linux-headers \
     shadow \
- && docker-php-ext-configure gd --with-jpeg --with-webp \
- && docker-php-ext-install -j$(nproc) \
+&& docker-php-ext-configure gd --with-jpeg --with-webp \
+&& docker-php-ext-install -j$(nproc) \
     pdo \
     pdo_mysql \
+    pdo_pgsql \
     mbstring \
     zip \
     intl \
