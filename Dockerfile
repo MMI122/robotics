@@ -57,8 +57,15 @@ EXPOSE 8080
 # Create a basic .env file for Laravel with APP_KEY
 RUN touch .env && echo "APP_KEY=base64:je5QufSs/V5ov2GWckNSOafJWS/ZWZZf1wpPHyctJWQ=" >> .env
 
-# Entrypoint: storage link, then serve (skip migrations for now)
-CMD php artisan storage:link || true \
+# Entrypoint: run migrations one by one, storage link, then serve
+CMD php artisan migrate:status || true \
+ && php artisan migrate --path=database/migrations/0001_01_01_000001_create_cache_table.php --force || true \
+ && php artisan migrate --path=database/migrations/0001_01_01_000000_create_users_table.php --force || true \
+ && php artisan migrate --path=database/migrations/0001_01_01_000002_create_jobs_table.php --force || true \
+ && php artisan migrate --path=database/migrations/2025_10_03_131615_create_categories_table.php --force || true \
+ && php artisan migrate --path=database/migrations/2025_10_03_131616_create_products_table.php --force || true \
+ && php artisan migrate --force || true \
+ && php artisan storage:link || true \
  && php -S 0.0.0.0:$PORT -t public
 
 
