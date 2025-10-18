@@ -57,14 +57,25 @@ EXPOSE 8080
 # Create a basic .env file for Laravel with APP_KEY
 RUN touch .env && echo "APP_KEY=base64:je5QufSs/V5ov2GWckNSOafJWS/ZWZZf1wpPHyctJWQ=" >> .env
 
-# Entrypoint: run migrations one by one, storage link, then serve
-CMD php artisan migrate:status || true \
- && php artisan migrate --path=database/migrations/0001_01_01_000001_create_cache_table.php --force || true \
- && php artisan migrate --path=database/migrations/0001_01_01_000000_create_users_table.php --force || true \
- && php artisan migrate --path=database/migrations/0001_01_01_000002_create_jobs_table.php --force || true \
- && php artisan migrate --path=database/migrations/2025_10_03_131615_create_categories_table.php --force || true \
- && php artisan migrate --path=database/migrations/2025_10_03_131616_create_products_table.php --force || true \
- && php artisan migrate --force || true \
+# Entrypoint: drop all tables, run migrations in correct order, storage link, then serve
+CMD php artisan migrate:fresh --force \
+ && php artisan migrate --path=database/migrations/0001_01_01_000001_create_cache_table.php --force \
+ && php artisan migrate --path=database/migrations/0001_01_01_000000_create_users_table.php --force \
+ && php artisan migrate --path=database/migrations/0001_01_01_000002_create_jobs_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_03_131615_create_categories_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_03_131616_create_products_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_03_131658_create_orders_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_03_131724_create_order_items_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_03_131743_create_carts_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_03_131756_create_reviews_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_03_131818_create_wishlists_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_03_131842_create_supports_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_03_140008_create_personal_access_tokens_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_17_052258_add_tier_to_users_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_17_062711_add_vip_to_user_tier_enum.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_17_110203_update_payment_method_enum_in_orders_table.php --force \
+ && php artisan migrate --path=database/migrations/2025_10_17_110251_update_payment_method_enum_in_orders_table.php --force \
+ && php artisan db:seed --force \
  && php artisan storage:link || true \
  && php -S 0.0.0.0:$PORT -t public
 
