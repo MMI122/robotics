@@ -1,21 +1,2 @@
-[phases.setup]
-nixPkgs = ["php82", "php82Packages.composer", "nodejs_18"]
-
-[phases.install]
-cmds = ["cd backend && composer install --no-dev --optimize-autoloader"]
-
-[phases.build]
-cmds = [
-    "cd backend && php artisan config:clear",
-    "cd backend && php artisan cache:clear", 
-    "cd backend && php artisan view:clear",
-    "cd backend && php artisan migrate --force",
-    "cd backend && php artisan db:seed --force"
-]
-
-# Disable automatic PHP provider detection
-[providers]
-php = false
-
-[start]
-cmd = "cd backend && php artisan serve --host=0.0.0.0 --port=$PORT"
+# This file is not used when using Dockerfile builder
+# Railway will use Dockerfile.railway instead
