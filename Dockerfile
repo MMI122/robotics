@@ -57,8 +57,8 @@ EXPOSE 8080
 # Create a basic .env file for Laravel with APP_KEY
 RUN touch .env && echo "APP_KEY=base64:je5QufSs/V5ov2GWckNSOafJWS/ZWZZf1wpPHyctJWQ=" >> .env
 
-# Entrypoint: run migrations, storage link, then serve
-CMD php artisan migrate --force \
+# Entrypoint: reset database, run migrations, storage link, then serve
+CMD php artisan migrate:fresh --force \
  && php artisan storage:link || true \
  && php -S 0.0.0.0:$PORT -t public
 
