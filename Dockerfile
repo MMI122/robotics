@@ -56,6 +56,7 @@ EXPOSE 8080
 
 # Create a basic .env file for Laravel
 RUN touch .env
+# Force redeploy to pick up APP_KEY
 
 # Entrypoint: run migrations, storage link, then serve
 CMD php artisan key:generate --force \
