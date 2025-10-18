@@ -61,9 +61,6 @@ RUN touch .env && echo "APP_KEY=base64:je5QufSs/V5ov2GWckNSOafJWS/ZWZZf1wpPHyctJ
 CMD php artisan migrate --force \
  && php artisan db:seed --force \
  && php artisan storage:link || true \
- && php artisan config:clear \
- && php artisan cache:clear \
- && php artisan view:clear \
  && php -S 0.0.0.0:$PORT -t public
 
 
