@@ -54,13 +54,11 @@ ENV PORT=8080
 # Expose port for Koyeb
 EXPOSE 8080
 
-# Create a basic .env file for Laravel
-RUN touch .env
-# Force redeploy to pick up APP_KEY
+# Create a basic .env file for Laravel with APP_KEY
+RUN touch .env && echo "APP_KEY=base64:je5QufSs/V5ov2GWckNSOafJWS/ZWZZf1wpPHyctJWQ=" >> .env
 
 # Entrypoint: run migrations, storage link, then serve
-CMD php artisan key:generate --force \
- && php artisan config:clear \
+CMD php artisan config:clear \
  && php artisan cache:clear \
  && php artisan view:clear \
  && php artisan migrate --force \
