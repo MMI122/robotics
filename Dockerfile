@@ -40,10 +40,7 @@ RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini \
  && sed -i 's/post_max_size = .*/post_max_size = 20M/' /usr/local/etc/php/php.ini
 
 # Install PHP dependencies
-RUN composer install --no-dev --prefer-dist --optimize-autoloader \
- && php artisan config:clear \
- && php artisan cache:clear \
- && php artisan view:clear
+RUN composer install --no-dev --prefer-dist --optimize-autoloader
 
 # Ensure storage and cache directories are writable
 RUN mkdir -p storage/framework/{cache,views,sessions} storage/app/public \
@@ -57,6 +54,9 @@ EXPOSE 8080
 
 # Entrypoint: run migrations, storage link, then serve
 CMD php artisan key:generate --force \
+ && php artisan config:clear \
+ && php artisan cache:clear \
+ && php artisan view:clear \
  && php artisan migrate --force \
  && php artisan db:seed --force \
  && php artisan storage:link || true \
