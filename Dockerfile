@@ -58,12 +58,12 @@ EXPOSE 8080
 RUN touch .env && echo "APP_KEY=base64:je5QufSs/V5ov2GWckNSOafJWS/ZWZZf1wpPHyctJWQ=" >> .env
 
 # Entrypoint: run migrations, storage link, then serve
-CMD php artisan config:clear \
- && php artisan cache:clear \
- && php artisan view:clear \
- && php artisan migrate --force \
+CMD php artisan migrate --force \
  && php artisan db:seed --force \
  && php artisan storage:link || true \
+ && php artisan config:clear \
+ && php artisan cache:clear \
+ && php artisan view:clear \
  && php -S 0.0.0.0:$PORT -t public
 
 
