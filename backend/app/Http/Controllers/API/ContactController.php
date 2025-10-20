@@ -47,6 +47,11 @@ class ContactController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+            \Log::error('Contact form error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all()
+            ]);
+            
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to send message. Please try again later.',
