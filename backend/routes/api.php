@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\API\ContactController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ProductController;
 use App\Http\Controllers\API\CategoryController;
@@ -36,6 +37,9 @@ Route::get('categories/{slug}/products', [CategoryController::class, 'products']
 Route::get('products/{product}/reviews', [ReviewController::class, 'index']);
 Route::get('reviews/{review}', [ReviewController::class, 'show']);
 Route::post('reviews/{review}/helpful', [ReviewController::class, 'markHelpful']);
+
+// Public contact route
+Route::post('contact', [ContactController::class, 'store']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {

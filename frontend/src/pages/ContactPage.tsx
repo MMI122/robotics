@@ -34,6 +34,7 @@ import {
   CheckCircle,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
+import api from '../services/api';
 
 const ContactPage: React.FC = () => {
   const theme = useTheme();
@@ -59,12 +60,14 @@ const ContactPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+    try {
+      await api.post('/contact', formData);
+      setIsSubmitted(true);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Failed to send message.';
+      alert(message);
+    }
     setIsSubmitting(false);
-    setIsSubmitted(true);
   };
 
   const contactInfo = [

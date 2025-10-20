@@ -146,6 +146,12 @@ class SupportController extends Controller
                 'status' => 'replied'
             ]);
 
+            // Send email notification to user
+            if ($support->user && $support->user->email) {
+                \Mail::to($support->user->email)
+                    ->send(new \App\Mail\SupportReplyMail($support, $validated['admin_reply']));
+            }
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Reply sent successfully',
