@@ -50,14 +50,15 @@ RUN mkdir -p storage/framework/{cache,views,sessions} storage/app/public \
  && chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache
 
-# Create a basic .env file for Laravel with APP_KEY
-RUN touch .env && echo "APP_KEY=base64:je5QufSs/V5ov2GWckNSOafJWS/ZWZZf1wpPHyctJWQ=" >> .env
+# Railway will provide environment variables, no need to create .env file
 
 # Expose port for Railway
 EXPOSE 8080
 
-# Entrypoint: run migrations in correct order, storage link, then serve
-CMD php artisan migrate:fresh --force \
+# Entrypoint: clear config cache, run migrations in correct order, storage link, then serve
+CMD php artisan config:clear \
+ && php artisan cache:clear \
+ && php artisan migrate:fresh --force \
  && php artisan migrate --path=database/migrations/0001_01_01_000001_create_cache_table.php --force \
  && php artisan migrate --path=database/migrations/0001_01_01_000000_create_users_table.php --force \
  && php artisan migrate --path=database/migrations/0001_01_01_000002_create_jobs_table.php --force \
