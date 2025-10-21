@@ -27,13 +27,36 @@ class ContactController extends Controller
                 'message' => 'required|string|max:2000',
             ]);
 
+            // Log the contact form submission for debugging
+            \Log::info('Contact form submission received', $validated);
+            \Log::info('Mail config check', [
+                'mailer' => config('mail.default'),
+                'host' => config('mail.mailers.smtp.host'),
+                'port' => config('mail.mailers.smtp.port'),
+                'username' => config('mail.mailers.smtp.username'),
+                'from_address' => config('mail.from.address'),
+                'from_name' => config('mail.from.name')
+            ]);
+            
             // Send email to admin
-            Mail::to(config('mail.from.address'))
-                ->send(new ContactFormMail($validated));
+            try {
+                Mail::to(config('mail.from.address'))
+                    ->send(new ContactFormMail($validated));
+                \Log::info('Admin email sent successfully');
+            } catch (\Exception $mailError) {
+                \Log::error('Failed to send admin email: ' . $mailError->getMessage());
+                // Continue without failing the request
+            }
 
             // Optionally send confirmation email to user
-            Mail::to($validated['email'])
-                ->send(new ContactFormMail($validated, true));
+            try {
+                Mail::to($validated['email'])
+                    ->send(new ContactFormMail($validated, true));
+                \Log::info('Confirmation email sent successfully');
+            } catch (\Exception $mailError) {
+                \Log::error('Failed to send confirmation email: ' . $mailError->getMessage());
+                // Continue without failing the request
+            }
 
             return response()->json([
                 'status' => 'success',
