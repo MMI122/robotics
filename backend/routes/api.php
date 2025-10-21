@@ -177,3 +177,17 @@ Route::get('health', function () {
         'version' => '1.0.0'
     ]);
 });
+
+// Debug mail config (temporary)
+Route::get('debug/mail', function () {
+    return response()->json([
+        'mail_default' => config('mail.default'),
+        'smtp_host' => config('mail.mailers.smtp.host'),
+        'smtp_port' => config('mail.mailers.smtp.port'),
+        'smtp_username' => config('mail.mailers.smtp.username'),
+        'smtp_password_set' => !empty(config('mail.mailers.smtp.password')),
+        'from_address' => config('mail.from.address'),
+        'from_name' => config('mail.from.name'),
+        'app_env' => config('app.env'),
+    ]);
+});
