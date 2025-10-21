@@ -191,3 +191,32 @@ Route::get('debug/mail', function () {
         'app_env' => config('app.env'),
     ]);
 });
+
+// Test email sending from Railway (temporary)
+Route::post('debug/send-email', function () {
+    try {
+        \Log::info('Attempting to send test email from Railway');
+        
+        Mail::raw('Test email from Railway deployment', function($message) {
+            $message->to('mubinislam636@gmail.com')
+                    ->subject('Test Email from Railway');
+        });
+        
+        \Log::info('Test email sent successfully from Railway');
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Test email sent successfully'
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error('Failed to send test email from Railway: ' . $e->getMessage());
+        \Log::error('Error details: ' . $e->getTraceAsString());
+        
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to send test email',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});

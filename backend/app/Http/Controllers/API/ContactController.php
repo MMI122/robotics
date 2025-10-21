@@ -40,21 +40,37 @@ class ContactController extends Controller
             
             // Send email to admin
             try {
+                // Temporarily use log driver to debug
+                $originalDriver = config('mail.default');
+                config(['mail.default' => 'log']);
+                
                 Mail::to(config('mail.from.address'))
                     ->send(new ContactFormMail($validated));
                 \Log::info('Admin email sent successfully');
+                
+                // Restore original driver
+                config(['mail.default' => $originalDriver]);
             } catch (\Exception $mailError) {
                 \Log::error('Failed to send admin email: ' . $mailError->getMessage());
+                \Log::error('Mail error details: ' . $mailError->getTraceAsString());
                 // Continue without failing the request
             }
 
             // Optionally send confirmation email to user
             try {
+                // Temporarily use log driver to debug
+                $originalDriver = config('mail.default');
+                config(['mail.default' => 'log']);
+                
                 Mail::to($validated['email'])
                     ->send(new ContactFormMail($validated, true));
                 \Log::info('Confirmation email sent successfully');
+                
+                // Restore original driver
+                config(['mail.default' => $originalDriver]);
             } catch (\Exception $mailError) {
                 \Log::error('Failed to send confirmation email: ' . $mailError->getMessage());
+                \Log::error('Mail error details: ' . $mailError->getTraceAsString());
                 // Continue without failing the request
             }
 
